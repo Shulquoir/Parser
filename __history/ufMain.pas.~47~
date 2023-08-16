@@ -1,0 +1,159 @@
+unit ufMain;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtDlgs, Vcl.Buttons;
+
+type
+  TForm1 = class(TForm)
+    ePath1: TEdit;
+    bCreateTSV: TButton;
+    ePath2: TEdit;
+    ePath3: TEdit;
+    bOpenExcel: TButton;
+    bOpenCalc: TButton;
+    bWriteDFN: TButton;
+    OpenDialog1: TOpenDialog;
+    OpenDialog2: TOpenDialog;
+    OpenDialog3: TOpenDialog;
+    spChooseDFN: TSpeedButton;
+    Label1: TLabel;
+    spChooseTSV: TSpeedButton;
+    Label2: TLabel;
+    spChooseDFN2: TSpeedButton;
+    Label3: TLabel;
+    SaveDialog1: TSaveDialog;
+    procedure ePath1KeyPress(Sender: TObject; var Key: Char);
+    procedure spChooseDFNClick(Sender: TObject);
+    procedure spChooseTSVClick(Sender: TObject);
+    procedure spChooseDFN2Click(Sender: TObject);
+    procedure FormDestroy(Sender: TObject);
+    procedure bCreateTSVClick(Sender: TObject);
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  Form1: TForm1;
+  OriginalFileContent: TStringList;
+  OpenedFilePath: string;
+
+implementation
+
+{$R *.dfm}
+
+procedure TForm1.bCreateTSVClick(Sender: TObject);
+
+var OutputFileContent: TStringList;
+    OutputFilePath: string;
+    //SaveDialog: TSaveDialog;
+
+begin
+  if OriginalFileContent <> nil then
+  begin
+    //SaveDialog := TSaveDialog.Create(Self);
+    //try
+      //SaveDialog1.DefaultExt := 'tsv';
+      //SaveDialog1.Filter := 'TSV Files (*.tsv)|*.tsv';
+      SaveDialog1.FileName := ChangeFileExt(ExtractFileName(OpenedFilePath), '.tsv'); // Пропоноване ім'я файлу
+      if SaveDialog1.Execute then
+      begin
+        OutputFilePath := SaveDialog1.FileName;
+        OutputFileContent := TStringList.Create;
+        try
+          OutputFileContent.Add('ID' + #9 + 'Значения' + #9 + 'Перевод'); // Додаємо першу строку з колонками
+          for var i := 0 to OriginalFileContent.Count - 1 do
+          begin
+            // Тут ви можете виконати обробку рядка відповідно до формату DFN
+            // та перетворити його в формат TSV
+            // У цьому прикладі, просто замінюємо " " на табуляцію
+            var line := StringReplace(OriginalFileContent[i], ' ', #9, [rfReplaceAll]);
+            OutputFileContent.Add(line);
+          end;
+            OutputFileContent.SaveToFile(OutputFilePath);
+          ShowMessage('Файл був успішно сконвертований та збережений у форматі TSV.' + OpenedFilePath + OutputFilePath);
+        finally
+          OutputFileContent.Free;
+        end;
+      end;
+    //finally
+      //SaveDialog1.Free;
+    //end;
+  end
+  else
+    ShowMessage('Спочатку відкрийте файл DFN.');
+end;
+
+procedure TForm1.ePath1KeyPress(Sender: TObject; var Key: Char);
+
+var FilePath: string;
+
+begin
+
+  if (Key = #13) then  // #13 - код клавіші "Enter"
+  begin
+    FilePath := ePath1.Text;
+    if FileExists(FilePath) then
+    begin
+      try
+        if OriginalFileContent <> nil then
+          OriginalFileContent.Free; // Звільнюємо попередній вміст, якщо був
+
+        OriginalFileContent := TStringList.Create;
+        OriginalFileContent.LoadFromFile(FilePath);
+        OpenedFilePath := FilePath;
+        ShowMessage('Файл відкрито: ' + FilePath);
+      except
+        on E: Exception do
+          ShowMessage('Помилка при відкритті файлу: ' + E.Message);
+      end;
+    end
+    else
+    begin
+    ShowMessage('Файл не існує: ' + FilePath);
+    end;
+  end;
+end;
+
+procedure TForm1.FormDestroy(Sender: TObject);
+begin
+  OriginalFileContent.Free;
+end;
+
+procedure TForm1.spChooseDFN2Click(Sender: TObject);
+begin
+  if OpenDialog3.Execute then
+  ePath3.Text := OpenDialog3.FileName;
+end;
+
+procedure TForm1.spChooseDFNClick(Sender: TObject);
+begin
+  if OpenDialog1.Execute then
+  begin
+    try
+      if OriginalFileContent <> nil then
+        OriginalFileContent.Free;
+
+      ePath1.Text := OpenDialog1.FileName;
+      OriginalFileContent := TStringList.Create;
+      OriginalFileContent.LoadFromFile(OpenDialog1.FileName);
+      OpenedFilePath := OpenDialog1.FileName;
+      ShowMessage('Файл DFN був відкритий.');
+    except
+      on E: Exception do
+          ShowMessage('Помилка при відкритті файлу: ' + E.Message);
+    end;
+  end;
+end;
+
+procedure TForm1.spChooseTSVClick(Sender: TObject);
+begin
+  if OpenDialog2.Execute then
+  ePath2.Text := OpenDialog2.FileName;
+end;
+
+end.
