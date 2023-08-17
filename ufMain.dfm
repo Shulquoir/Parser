@@ -271,6 +271,7 @@ object Form1: TForm1
     Height = 25
     Caption = #1054#1090#1082#1088#1099#1090#1100' '#1074' Excel'
     TabOrder = 4
+    OnClick = bOpenExcelClick
   end
   object bOpenCalc: TButton
     Left = 280
@@ -279,6 +280,7 @@ object Form1: TForm1
     Height = 25
     Caption = #1054#1090#1082#1088#1099#1090#1100' '#1074' Calc'
     TabOrder = 5
+    OnClick = bOpenCalcClick
   end
   object bWriteDFN: TButton
     Left = 432
@@ -307,5 +309,13 @@ object Form1: TForm1
     Options = [ofOverwritePrompt, ofHideReadOnly, ofEnableSizing]
     Left = 40
     Top = 136
+  end
+  object OpenDialog4: TOpenDialog
+    Left = 312
+    Top = 40
+  end
+  object OpenDialog5: TOpenDialog
+    Left = 312
+    Top = 112
   end
 end

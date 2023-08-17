@@ -4,7 +4,7 @@ interface
 
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
-  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtDlgs, Vcl.Buttons;
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtDlgs, Vcl.Buttons, ShellAPI;
 
 type
   TForm1 = class(TForm)
@@ -25,16 +25,22 @@ type
     spChooseDFN2: TSpeedButton;
     Label3: TLabel;
     SaveDialog1: TSaveDialog;
+    OpenDialog4: TOpenDialog;
+    OpenDialog5: TOpenDialog;
     procedure ePath1KeyPress(Sender: TObject; var Key: Char);
     procedure spChooseDFNClick(Sender: TObject);
     procedure spChooseTSVClick(Sender: TObject);
     procedure spChooseDFN2Click(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure bCreateTSVClick(Sender: TObject);
+    procedure bOpenExcelClick(Sender: TObject);
+    procedure bOpenCalcClick(Sender: TObject);
   private
     { Private declarations }
     function ContainsCyrillicCharacters(const input: string): Boolean;
     function IsCharCyrillic(c: Char): Boolean;
+    function ExtractFieldValue(const field: string): string;
+    function ExtractField(const fields: TArray<string>; const fieldName: string): string;
   public
     { Public declarations }
 
@@ -43,7 +49,9 @@ type
 var
   Form1: TForm1;
   OriginalFileContent: TStringList; // Створюємо глобальну змінну, яка буде зберігати контент відкритого файлу до моменту переобрання або зберігання файлу
-  OpenedFilePath: string; // Створюємо глобальну змінну, яка буде зберігати шлях відкритого файлу
+  OpenedFilePath: String; // Створюємо глобальну змінну, яка буде зберігати шлях відкритого файлу
+  SavedFilePath: String; // Створюємо глобальну змінну для зберігання шляху збереженого tsv файлу для можливості відкрити його в сторонніх програмах
+  IsFileCreate: boolean = false;
 
 implementation
 
@@ -52,7 +60,6 @@ implementation
 procedure TForm1.bCreateTSVClick(Sender: TObject);
 
 var OutputFileContent: TStringList; // Створюємо змінну для зберігання форматованого контенту файлу
-    //OutputFilePath: string; // Створюємо змінну для зберігання пропонованого імені файлу при збереженні
 
 begin
   if OriginalFileContent <> nil then // Перевірка чи був відкритий файл
@@ -60,20 +67,32 @@ begin
       SaveDialog1.FileName := ChangeFileExt(ExtractFileName(OpenedFilePath), '.tsv'); // Отримуємо пропоноване ім'я файлу для зберігання, через ім'я відкритого файлу з заміною формата
       if SaveDialog1.Execute then  // Перевірка чи була натиснута кнопка збереження файлу в діалоговому вікні
       begin
-        //OtputFilePath := SaveDialog1.FileName;
+        IsFileCreate := true;
         OutputFileContent := TStringList.Create; // Створюємо об'єкт типу TStringList
         try
           OutputFileContent.Add('ID' + #9 + 'Значения' + #9 + 'Перевод'); // Додаємо першу строку в змінну, яка відповідає за форматований контент файлу
           for var i := 0 to OriginalFileContent.Count - 1 do
         begin
           var line := OriginalFileContent[i]; //
-          if ContainsCyrillicCharacters(line) then //
-            OutputFileContent.Add(line); //
+          if ContainsCyrillicCharacters(line) and
+          (Pos('ID', line) > 0) and (Pos('Orig', line) > 0) and (Pos('Curr', line) > 0) then //
+            //OutputFileContent.Add(line);
+          begin
+            var fields := line.Split([#4]);
+            if Length(fields) >= 3 then
+            begin
+              var id := ExtractFieldValue(ExtractField(fields, 'ID'));
+              var orig := ExtractFieldValue(ExtractField(fields, 'Orig'));
+              var curr := ExtractFieldValue(ExtractField(fields, 'Curr'));
+              OutputFileContent.Add(id + #9 + orig + #9 + curr);
+            end;
+          end;
         end;
-            if Pos('.tsv', SaveDialog1.FileName) > 0 then //
-              OutputFileContent.SaveToFile(SaveDialog1.FileName) //
+            if Pos('.tsv', SaveDialog1.FileName) > 0 then // Перевірка чи є в імені зберігаємого файлу розширення tsv
+              OutputFileContent.SaveToFile(SaveDialog1.FileName) // Запис форматованого контенту в зберігаємий файл
             else
-              OutputFileContent.SaveToFile(SaveDialog1.FileName + '.tsv'); //
+              OutputFileContent.SaveToFile(SaveDialog1.FileName + '.tsv'); // Запис форматованого контенту в зберігаємий файл з дописуванням формату
+            SavedFilePath := SaveDialog1.FileName; // Записуємо шлях створеного файлу
             ShowMessage('Файл був успішно сконвертований та збережений у форматі TSV.' + SaveDialog1.FileName);
         finally
           OutputFileContent.Free;
@@ -82,6 +101,41 @@ begin
   end
   else
     ShowMessage('Спочатку відкрийте файл DFN.');
+end;
+
+procedure TForm1.bOpenCalcClick(Sender: TObject);
+begin
+  if IsFileCreate then
+    ShellExecute(0, 'open', 'soffice.exe', PChar('"'+SavedFilePath+'"'), nil, SW_SHOWNORMAL)
+  else
+    ShowMessage('Спочатку створіть TSV файл');
+end;
+
+procedure TForm1.bOpenExcelClick(Sender: TObject);
+var
+  ExcelPath: string;
+begin
+  ExcelPath := 'C:\Program Files\Microsoft Office\root\Office16\excel.exe';
+  if IsFileCreate then
+  begin
+    if FileExists(ExcelPath) then
+    begin
+      if IsFileCreate then
+      begin
+        ShellExecute(0, 'open', PChar(ExcelPath), PChar('"'+SavedFilePath+'"'), nil, SW_SHOW);
+      end;
+    end
+    else
+    begin
+      ShowMessage('Excel не знайдено. Виберіть файл Excel через діалог.');
+      if OpenDialog4.Execute then
+      begin
+        ShellExecute(0, 'open', PChar('excel.exe'), PChar('"'+SavedFilePath+'"'), nil, SW_SHOW);
+      end;
+    end;
+  end
+  else
+    ShowMessage('Спочатку створіть TSV файл');
 end;
 
 function TForm1.ContainsCyrillicCharacters(const input: string): Boolean; // Функція для перевірки чи є слова кирилицею
@@ -96,11 +150,6 @@ begin
       Exit;
     end;
   end;
-end;
-
-function TForm1.IsCharCyrillic(c: Char): Boolean; // Функція для перевірки чи є літера кирилицею
-begin
-  Result := (c >= 'А') and (c <= 'Я') or (c >= 'а') and (c <= 'я') or (c = 'Ё') or (c = 'ё');
 end;
 
 procedure TForm1.ePath1KeyPress(Sender: TObject; var Key: Char);
@@ -168,6 +217,39 @@ procedure TForm1.spChooseTSVClick(Sender: TObject);
 begin
   if OpenDialog2.Execute then
   ePath2.Text := OpenDialog2.FileName;
+end;
+
+function TForm1.IsCharCyrillic(c: Char): Boolean; // Функція для перевірки чи є літера кирилицею
+begin
+  Result := (c >= 'А') and (c <= 'Я') or (c >= 'а') and (c <= 'я') or (c = 'Ё') or (c = 'ё');
+end;
+
+function TForm1.ExtractFieldValue(const field: string): string;
+var
+  colonPos: Integer;
+  fieldValue: string;
+begin
+  colonPos := Pos(':', field);
+  if colonPos > 0 then
+  begin
+    fieldValue := Trim(Copy(field, colonPos + 1, MaxInt));
+    if (Length(fieldValue) >= 2) and (fieldValue[1] = '''') and (fieldValue[Length(fieldValue)] = '''') then
+      Result := Copy(fieldValue, 2, Length(fieldValue) - 2)
+    else
+      Result := fieldValue;
+  end
+  else
+    Result := '';
+end;
+
+function TForm1.ExtractField(const fields: TArray<string>; const fieldName: string): string;
+begin
+  for var field in fields do
+  begin
+    if Pos(fieldName, field) > 0 then
+      Exit(Trim(Copy(field, Length(fieldName) + 1, MaxInt)));
+  end;
+  Result := '';
 end;
 
 end.

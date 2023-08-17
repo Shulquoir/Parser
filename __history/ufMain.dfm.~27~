@@ -12,6 +12,7 @@ object Form1: TForm1
   Font.Style = []
   Position = poScreenCenter
   Visible = True
+  OnDestroy = FormDestroy
   TextHeight = 15
   object spChooseDFN: TSpeedButton
     Left = 191
@@ -247,6 +248,7 @@ object Form1: TForm1
     Height = 25
     Caption = #1057#1086#1079#1076#1072#1090#1100' TSV'
     TabOrder = 1
+    OnClick = bCreateTSVClick
   end
   object ePath2: TEdit
     Left = 432
@@ -269,6 +271,7 @@ object Form1: TForm1
     Height = 25
     Caption = #1054#1090#1082#1088#1099#1090#1100' '#1074' Excel'
     TabOrder = 4
+    OnClick = bOpenExcelClick
   end
   object bOpenCalc: TButton
     Left = 280
@@ -301,7 +304,8 @@ object Form1: TForm1
     Top = 112
   end
   object SaveDialog1: TSaveDialog
-    Filter = '(*.tsv)|*.tsv'
+    Filter = 'TSV Files (*.tsv)|*.tsv|All Files(*.*)|*.*'
+    Options = [ofOverwritePrompt, ofHideReadOnly, ofEnableSizing]
     Left = 40
     Top = 136
   end

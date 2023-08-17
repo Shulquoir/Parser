@@ -76,6 +76,7 @@ begin
           var line := OriginalFileContent[i]; //
           if ContainsCyrillicCharacters(line) and
           (Pos('ID', line) > 0) and (Pos('Orig', line) > 0) and (Pos('Curr', line) > 0) then //
+            //OutputFileContent.Add(line);
           begin
             var fields := line.Split([#4]);
             if Length(fields) >= 3 then
@@ -133,7 +134,7 @@ procedure TForm1.bOpenExcelClick(Sender: TObject);
 var
   ExcelPath: string;
 begin
-  ExcelPath := 'C:\Program Files\Microsoft Office\root\Office16\excel.exe';
+  ExcelPath := 'excel.exe';  // C:\Program Files\Microsoft Office\root\Office16\
   if IsFileCreate then
   begin
     if FileExists(ExcelPath) then

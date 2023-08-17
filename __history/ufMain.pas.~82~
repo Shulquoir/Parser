@@ -25,8 +25,6 @@ type
     spChooseDFN2: TSpeedButton;
     Label3: TLabel;
     SaveDialog1: TSaveDialog;
-    OpenDialog4: TOpenDialog;
-    OpenDialog5: TOpenDialog;
     procedure ePath1KeyPress(Sender: TObject; var Key: Char);
     procedure spChooseDFNClick(Sender: TObject);
     procedure spChooseTSVClick(Sender: TObject);
@@ -34,7 +32,6 @@ type
     procedure FormDestroy(Sender: TObject);
     procedure bCreateTSVClick(Sender: TObject);
     procedure bOpenExcelClick(Sender: TObject);
-    procedure bOpenCalcClick(Sender: TObject);
   private
     { Private declarations }
     function ContainsCyrillicCharacters(const input: string): Boolean;
@@ -76,6 +73,7 @@ begin
           var line := OriginalFileContent[i]; //
           if ContainsCyrillicCharacters(line) and
           (Pos('ID', line) > 0) and (Pos('Orig', line) > 0) and (Pos('Curr', line) > 0) then //
+            //OutputFileContent.Add(line);
           begin
             var fields := line.Split([#4]);
             if Length(fields) >= 3 then
@@ -102,56 +100,11 @@ begin
     ShowMessage('Спочатку відкрийте файл DFN.');
 end;
 
-procedure TForm1.bOpenCalcClick(Sender: TObject);
-var
-  CalcPath: string;
-begin
-  CalcPath := 'C:\Program Files\LibreOffice\program\soffice.exe';
-  if IsFileCreate then
-  begin
-    if FileExists(CalcPath) then
-    begin
-      if IsFileCreate then
-      begin
-        ShellExecute(0, 'open', PChar(CalcPath), PChar('"'+SavedFilePath+'"'), nil, SW_SHOW);
-      end;
-    end
-    else
-    begin
-      ShowMessage('Calc не знайдено. Виберіть файл Calc через діалог.');
-      if OpenDialog5.Execute then
-      begin
-        ShellExecute(0, 'open', PChar(OpenDialog5.FileName), PChar('"'+SavedFilePath+'"'), nil, SW_SHOW);
-      end;
-    end;
-  end
-  else
-    ShowMessage('Спочатку створіть TSV файл');
-end;
-
 procedure TForm1.bOpenExcelClick(Sender: TObject);
-var
-  ExcelPath: string;
+
 begin
-  ExcelPath := 'C:\Program Files\Microsoft Office\root\Office16\excel.exe';
   if IsFileCreate then
-  begin
-    if FileExists(ExcelPath) then
-    begin
-      if IsFileCreate then
-      begin
-        ShellExecute(0, 'open', PChar(ExcelPath), PChar('"'+SavedFilePath+'"'), nil, SW_SHOW);
-      end;
-    end
-    else
-    begin
-      ShowMessage('Excel не знайдено. Виберіть файл Excel через діалог.');
-      if OpenDialog4.Execute then
-      begin
-        ShellExecute(0, 'open', PChar(OpenDialog4.FileName), PChar('"'+SavedFilePath+'"'), nil, SW_SHOW);
-      end;
-    end;
-  end
+    ShellExecute(0, 'open', 'excel.exe', PChar(SavedFilePath), nil, SW_SHOWNORMAL)
   else
     ShowMessage('Спочатку створіть TSV файл');
 end;
