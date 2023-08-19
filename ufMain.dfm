@@ -233,13 +233,13 @@ object Form1: TForm1
     Height = 15
     Caption = #1042#1099#1073#1086#1088' DFN'
   end
-  object ePath1: TEdit
+  object ePathDFN: TEdit
     Left = 8
     Top = 16
     Width = 177
     Height = 23
     TabOrder = 0
-    OnKeyPress = ePath1KeyPress
+    OnKeyPress = ePathDFNKeyPress
   end
   object bCreateTSV: TButton
     Left = 8
@@ -250,19 +250,21 @@ object Form1: TForm1
     TabOrder = 1
     OnClick = bCreateTSVClick
   end
-  object ePath2: TEdit
+  object ePathTSV: TEdit
     Left = 432
     Top = 16
     Width = 177
     Height = 23
     TabOrder = 2
+    OnKeyPress = ePathTSVKeyPress
   end
-  object ePath3: TEdit
+  object ePathDFN2: TEdit
     Left = 432
     Top = 89
     Width = 177
     Height = 23
     TabOrder = 3
+    OnKeyPress = ePathDFN2KeyPress
   end
   object bOpenExcel: TButton
     Left = 280
@@ -289,26 +291,29 @@ object Form1: TForm1
     Height = 25
     Caption = #1047#1072#1087#1080#1089#1100' '#1074' DFN'
     TabOrder = 6
+    OnClick = bWriteDFNClick
   end
-  object OpenDialog1: TOpenDialog
-    Filter = '(*.dfn)|*.dfn'
+  object odOpenDFN: TOpenDialog
+    Filter = 'DFN Files(*.dfn)|*.dfn|All Files(*.*)|*.*'
     Left = 200
     Top = 72
   end
-  object OpenDialog2: TOpenDialog
-    Filter = '(*.tsv)|*.tsv'
+  object odOpenTSV: TOpenDialog
+    Filter = 'TSV Files(*.tsv)|*.tsv|All Files(*.*)|*.*'
     Left = 560
     Top = 40
   end
-  object OpenDialog3: TOpenDialog
+  object odOpenDFN2: TOpenDialog
+    Filter = 'DNF Files(*.dfn)|*.dfn|All Files(*.*)|*.*'
+    Options = [ofEnableSizing]
     Left = 560
     Top = 112
   end
-  object SaveDialog1: TSaveDialog
+  object sdSaveTSV: TSaveDialog
     Filter = 'TSV Files (*.tsv)|*.tsv|All Files(*.*)|*.*'
     Options = [ofOverwritePrompt, ofHideReadOnly, ofEnableSizing]
     Left = 40
-    Top = 136
+    Top = 112
   end
   object OpenDialog4: TOpenDialog
     Left = 312
@@ -317,5 +322,10 @@ object Form1: TForm1
   object OpenDialog5: TOpenDialog
     Left = 312
     Top = 112
+  end
+  object sdSaveDFN: TSaveDialog
+    Filter = 'DFN Files (*.dfn)|*.dfn|All Files(*.*)|*.*'
+    Left = 464
+    Top = 176
   end
 end

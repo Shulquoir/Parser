@@ -8,26 +8,27 @@ uses
 
 type
   TForm1 = class(TForm)
-    ePath1: TEdit;
+    ePathDFN: TEdit;
     bCreateTSV: TButton;
-    ePath2: TEdit;
-    ePath3: TEdit;
+    ePathTSV: TEdit;
+    ePathDFN2: TEdit;
     bOpenExcel: TButton;
     bOpenCalc: TButton;
     bWriteDFN: TButton;
-    OpenDialog1: TOpenDialog;
-    OpenDialog2: TOpenDialog;
-    OpenDialog3: TOpenDialog;
+    odOpenDFN: TOpenDialog;
+    odOpenTSV: TOpenDialog;
+    odOpenDFN2: TOpenDialog;
     spChooseDFN: TSpeedButton;
     Label1: TLabel;
     spChooseTSV: TSpeedButton;
     Label2: TLabel;
     spChooseDFN2: TSpeedButton;
     Label3: TLabel;
-    SaveDialog1: TSaveDialog;
+    sdSaveTSV: TSaveDialog;
     OpenDialog4: TOpenDialog;
     OpenDialog5: TOpenDialog;
-    procedure ePath1KeyPress(Sender: TObject; var Key: Char);
+    sdSaveDFN: TSaveDialog;
+    procedure ePathDFNKeyPress(Sender: TObject; var Key: Char);
     procedure spChooseDFNClick(Sender: TObject);
     procedure spChooseTSVClick(Sender: TObject);
     procedure spChooseDFN2Click(Sender: TObject);
@@ -35,6 +36,9 @@ type
     procedure bCreateTSVClick(Sender: TObject);
     procedure bOpenExcelClick(Sender: TObject);
     procedure bOpenCalcClick(Sender: TObject);
+    procedure ePathTSVKeyPress(Sender: TObject; var Key: Char);
+    procedure ePathDFN2KeyPress(Sender: TObject; var Key: Char);
+    procedure bWriteDFNClick(Sender: TObject);
   private
     { Private declarations }
     function ContainsCyrillicCharacters(const input: string): Boolean;
@@ -48,10 +52,10 @@ type
 
 var
   Form1: TForm1;
-  OriginalFileContent: TStringList; // Створюємо глобальну змінну, яка буде зберігати контент відкритого файлу до моменту переобрання або зберігання файлу
-  OpenedFilePath: String; // Створюємо глобальну змінну, яка буде зберігати шлях відкритого файлу
-  SavedFilePath: String; // Створюємо глобальну змінну для зберігання шляху збереженого tsv файлу для можливості відкрити його в сторонніх програмах
-  IsFileCreate: boolean = false;
+  OriginalDFNFileContent, OriginalTSVFileContent, OriginalDFN2FileContent: TStringList; // Створюємо глобальну змінну, яка буде зберігати контент відкритого файлу до моменту переобрання або зберігання файлу
+  OpenedDFNFilePath, OpenedTSVFilePath, OpenedDFN2FilePath: String; // Створюємо глобальні змінні, які будуть зберігати шлях відкритих файлів
+  SavedTSVFilePath: String; // Створюємо глобальну змінну для зберігання шляху збереженого TSV файлу для можливості відкрити його в сторонніх програмах
+  IsFileCreate: boolean = false; // Змінна для перевірки, чи був збережений TSV файл, для відкриття його в сторонніх програмах
 
 implementation
 
@@ -62,18 +66,18 @@ procedure TForm1.bCreateTSVClick(Sender: TObject);
 var OutputFileContent: TStringList; // Створюємо змінну для зберігання форматованого контенту файлу
 
 begin
-  if OriginalFileContent <> nil then // Перевірка чи був відкритий файл
+  if OriginalDFNFileContent <> nil then // Перевірка чи був відкритий файл
   begin
-      SaveDialog1.FileName := ChangeFileExt(ExtractFileName(OpenedFilePath), '.tsv'); // Отримуємо пропоноване ім'я файлу для зберігання, через ім'я відкритого файлу з заміною формата
-      if SaveDialog1.Execute then  // Перевірка чи була натиснута кнопка збереження файлу в діалоговому вікні
-      begin
-        IsFileCreate := true;
-        OutputFileContent := TStringList.Create; // Створюємо об'єкт типу TStringList
-        try
-          OutputFileContent.Add('ID' + #9 + 'Значения' + #9 + 'Перевод'); // Додаємо першу строку в змінну, яка відповідає за форматований контент файлу
-          for var i := 0 to OriginalFileContent.Count - 1 do
+    sdSaveTSV.FileName := ChangeFileExt(ExtractFileName(OpenedDFNFilePath), '.tsv'); // Отримуємо пропоноване ім'я файлу для зберігання, через ім'я відкритого файлу з заміною формата
+    if sdSaveTSV.Execute then  // Перевірка чи була натиснута кнопка збереження файлу в діалоговому вікні
+    begin
+      IsFileCreate := true;
+      OutputFileContent := TStringList.Create; // Створюємо об'єкт типу TStringList
+      try
+        OutputFileContent.Add('ID' + #9 + 'Значения' + #9 + 'Перевод'); // Додаємо першу строку в змінну, яка відповідає за форматований контент файлу
+        for var i := 0 to OriginalDFNFileContent.Count - 1 do
         begin
-          var line := OriginalFileContent[i]; //
+          var line := OriginalDFNFileContent[i]; //
           if ContainsCyrillicCharacters(line) and
           (Pos('ID', line) > 0) and (Pos('Orig', line) > 0) and (Pos('Curr', line) > 0) then //
           begin
@@ -87,46 +91,206 @@ begin
             end;
           end;
         end;
-            if Pos('.tsv', SaveDialog1.FileName) > 0 then // Перевірка чи є в імені зберігаємого файлу розширення tsv
-              OutputFileContent.SaveToFile(SaveDialog1.FileName) // Запис форматованого контенту в зберігаємий файл
-            else
-              OutputFileContent.SaveToFile(SaveDialog1.FileName + '.tsv'); // Запис форматованого контенту в зберігаємий файл з дописуванням формату
-            SavedFilePath := SaveDialog1.FileName; // Записуємо шлях створеного файлу
-            ShowMessage('Файл був успішно сконвертований та збережений у форматі TSV.' + SaveDialog1.FileName);
-        finally
-          OutputFileContent.Free;
-        end;
-      end;
-  end
-  else
-    ShowMessage('Спочатку відкрийте файл DFN.');
-end;
+        if Pos('.tsv', sdSaveTSV.FileName) > 0 then // Перевірка чи є в імені зберігаємого файлу розширення tsv
+          OutputFileContent.SaveToFile(sdSaveTSV.FileName) // Запис форматованого контенту в зберігаємий файл
+        else
+          OutputFileContent.SaveToFile(sdSaveTSV.FileName + '.tsv'); // Запис форматованого контенту в зберігаємий файл з дописуванням формату
 
-procedure TForm1.bOpenCalcClick(Sender: TObject);
-var
-  CalcPath: string;
-begin
-  CalcPath := 'C:\Program Files\LibreOffice\program\soffice.exe';
-  if IsFileCreate then
-  begin
-    if FileExists(CalcPath) then
-    begin
-      if IsFileCreate then
-      begin
-        ShellExecute(0, 'open', PChar(CalcPath), PChar('"'+SavedFilePath+'"'), nil, SW_SHOW);
-      end;
-    end
-    else
-    begin
-      ShowMessage('Calc не знайдено. Виберіть файл Calc через діалог.');
-      if OpenDialog5.Execute then
-      begin
-        ShellExecute(0, 'open', PChar(OpenDialog5.FileName), PChar('"'+SavedFilePath+'"'), nil, SW_SHOW);
+        SavedTSVFilePath := sdSaveTSV.FileName; // Записуємо шлях створеного файлу
+        ShowMessage('Файл был успешно сконвертирован и сохранен в формате TSV.' + sdSaveTSV.FileName);
+      finally
+        OutputFileContent.Free;
       end;
     end;
   end
   else
-    ShowMessage('Спочатку створіть TSV файл');
+    ShowMessage('Сначала откройте файл DFN.');
+end;
+
+procedure TForm1.bWriteDFNClick(Sender: TObject);
+
+var FieldA, FieldB: string;
+begin
+   if ChangeFileExt(ExtractFileName(odOpenTSV.FileName), '') <> ChangeFileExt(ExtractFileName(odOpenDFN2.FileName), '') then
+   begin
+     ShowMessage('Пожалуйста, откройте TSV и DFN файлы с совпадающими именами.');
+     Exit;
+   end;
+
+   if (OriginalTSVFileContent <> nil) and (OriginalDFN2FileContent <> nil) then
+   begin
+     try
+       for var TSVLine := 0 to OriginalTSVFileContent.Count - 1 do
+       begin
+         FieldA := OriginalTSVFileContent[TSVLine].Split([#9])[0];
+         for var DFNLine := 0 to OriginalDFN2FileContent.Count - 1 do
+         begin
+           FieldB := OriginalDFN2FileContent[DFNLine].Split([#4])[0]
+             .Substring(Pos('ID:', OriginalDFN2FileContent[DFNLine].Split([#4])[0]) + 2); // Знаходження значення після "ID:";
+           if Pos(FieldA, FieldB) = 1 then // Перевіряємо, чи поле починається з ідентичного поля
+           begin
+             for var CurrField := 0 to Length(OriginalDFN2FileContent[DFNLine].Split([#4])) - 1 do
+             begin
+               if Pos('Curr:', OriginalDFN2FileContent[DFNLine].Split([#4])[CurrField]) >= 1 then
+               begin
+                 OriginalDFN2FileContent[DFNLine] := OriginalDFN2FileContent[DFNLine]
+                   .Replace(OriginalDFN2FileContent[DFNLine].Split([#4])[CurrField],
+                   'Curr:' + QuotedStr(OriginalTSVFileContent[TSVLine].Split([#9])[2]));
+                 Break; // Вийти з циклу, якщо знайдено відповідне поле
+               end;
+             end;
+           Break;
+           end;
+         end;
+       end;
+
+       // Збереження оновленого файлу DFN
+        OriginalDFN2FileContent.SaveToFile(odOpenDFN2.FileName);
+        ShowMessage('Файл DFN был перезаписан.');
+     finally
+
+     end;
+   end
+   else
+   ShowMessage('Откройте TSV и DFN файлы!');
+end;
+
+procedure TForm1.spChooseDFNClick(Sender: TObject);
+begin
+  if odOpenDFN.Execute then // Перевірка чи була натиснута кнопка відкриття обраного файлу
+  begin
+    try
+      if OriginalDFNFileContent <> nil then // Перевірка чи був вже відкритий файл до цього моменту
+        OriginalDFNFileContent.Free; // Звільнюємо попередній вміст, якщо був
+
+      ePathDFN.Text := odOpenDFN.FileName; // Записуємо шлях до файла в відповідне поле "edit"
+      OriginalDFNFileContent := TStringList.Create; // Створюємо об'єкт типу TStringList
+      OriginalDFNFileContent.LoadFromFile(odOpenDFN.FileName); // Записуємо контент з відкритого файлу
+      OpenedDFNFilePath := odOpenDFN.FileName; // Записуємо шлях відкритого файлу в глобальну змінну
+      //ShowMessage('Файл DFN был открыт.');
+    except
+      on E: Exception do
+          ShowMessage('Ошибка при открытии файла: ' + E.Message);
+    end;
+  end;
+end;
+
+procedure TForm1.ePathDFNKeyPress(Sender: TObject; var Key: Char);
+begin
+  if (Key = #13) then // Якщо була натиснута клавіша #13 - код клавіші "Enter"
+  begin
+    if FileExists(ePathDFN.Text) then // Перевірка чи існує файл
+    begin
+      try
+        if OriginalDFNFileContent <> nil then // Перевірка чи був вже відкритий файл до цього моменту
+          OriginalDFNFileContent.Free; // Звільнюємо попередній вміст, якщо був
+
+        OriginalDFNFileContent := TStringList.Create; // Створюємо об'єкт типу TStringList
+        OriginalDFNFileContent.LoadFromFile(ePathDFN.Text); // Записуємо контент з відкритого файлу
+        OpenedDFNFilePath := ePathDFN.Text; // Записуємо шлях відкритого файлу в глобальну змінну
+        //ShowMessage('Файл был открыт: ' + ePathDFN.Text);
+      except
+        on E: Exception do
+          ShowMessage('Ошибка при открытии файла: ' + E.Message);
+      end;
+    end
+    else
+    begin
+    ShowMessage('Файл не существует: ' + ePathDFN.Text); // Якщо був введений не коректний шлях до файлу
+    end;
+  end;
+end;
+
+procedure TForm1.spChooseTSVClick(Sender: TObject);
+begin
+  if odOpenTSV.Execute then // Перевірка чи була натиснута кнопка відкриття обраного файлу
+  begin
+    try
+      if OriginalTSVFileContent <> nil then // Перевірка чи був вже відкритий файл до цього моменту
+        OriginalTSVFileContent.Free; // Звільнюємо попередній вміст, якщо був
+
+      ePathTSV.Text := odOpenTSV.FileName; // Записуємо шлях до файла в відповідне поле "edit"
+      OriginalTSVFileContent := TStringList.Create; // Створюємо об'єкт типу TStringList
+      OriginalTSVFileContent.LoadFromFile(odOpenTSV.FileName); // Записуємо контент з відкритого файлу
+      OpenedTSVFilePath := odOpenTSV.FileName; // Записуємо шлях відкритого файлу в глобальну змінну
+      ShowMessage('Файл TSV был открыт.');
+    except
+      on E: Exception do
+          ShowMessage('Ошибка при открытии файла: ' + E.Message);
+    end;
+  end;
+end;
+
+procedure TForm1.ePathTSVKeyPress(Sender: TObject; var Key: Char);
+begin
+  if (Key = #13) then // Якщо була натиснута клавіша #13 - код клавіші "Enter"
+  begin
+    if FileExists(ePathTSV.Text) then // Перевірка чи існує файл
+    begin
+      try
+        if OriginalTSVFileContent <> nil then // Перевірка чи був вже відкритий файл до цього моменту
+          OriginalTSVFileContent.Free; // Звільнюємо попередній вміст, якщо був
+
+        OriginalTSVFileContent := TStringList.Create; // Створюємо об'єкт типу TStringList
+        OriginalTSVFileContent.LoadFromFile(ePathTSV.Text); // Записуємо контент з відкритого файлу
+        OpenedTSVFilePath := ePathTSV.Text; // Записуємо шлях відкритого файлу в глобальну змінну
+        //ShowMessage('Файл был открыт: ' + ePathTSV.Text);
+      except
+        on E: Exception do
+          ShowMessage('Ошибка при открытии файла: ' + E.Message);
+      end;
+    end
+    else
+    begin
+    ShowMessage('Файл не существует: ' + ePathTSV.Text); // Якщо був введений не коректний шлях до файлу
+    end;
+  end;
+end;
+
+procedure TForm1.spChooseDFN2Click(Sender: TObject);
+begin
+  if odOpenDFN2.Execute then // Перевірка чи була натиснута кнопка відкриття обраного файлу
+  begin
+    try
+      if OriginalDFN2FileContent <> nil then // Перевірка чи був вже відкритий файл до цього моменту
+        OriginalDFN2FileContent.Free; // Звільнюємо попередній вміст, якщо був
+
+      ePathDFN2.Text := odOpenDFN2.FileName; // Записуємо шлях до файла в відповідне поле "edit"
+      OriginalDFN2FileContent := TStringList.Create; // Створюємо об'єкт типу TStringList
+      OriginalDFN2FileContent.LoadFromFile(odOpenDFN2.FileName); // Записуємо контент з відкритого файлу
+      OpenedDFN2FilePath := odOpenDFN2.FileName; // Записуємо шлях відкритого файлу в глобальну змінну
+      //ShowMessage('Файл DFN был открыт.');
+    except
+      on E: Exception do
+          ShowMessage('Ошибка при открытии файла: ' + E.Message);
+    end;
+  end;
+end;
+
+procedure TForm1.ePathDFN2KeyPress(Sender: TObject; var Key: Char);
+begin
+  if (Key = #13) then // Якщо була натиснута клавіша #13 - код клавіші "Enter"
+  begin
+    if FileExists(ePathDFN2.Text) then // Перевірка чи існує файл
+    begin
+      try
+        if OriginalDFN2FileContent <> nil then // Перевірка чи був вже відкритий файл до цього моменту
+          OriginalDFN2FileContent.Free; // Звільнюємо попередній вміст, якщо був
+
+        OriginalDFN2FileContent := TStringList.Create; // Створюємо об'єкт типу TStringList
+        OriginalDFN2FileContent.LoadFromFile(ePathDFN2.Text); // Записуємо контент з відкритого файлу
+        OpenedDFN2FilePath := ePathDFN2.Text; // Записуємо шлях відкритого файлу в глобальну змінну
+        //ShowMessage('Файл был открыт: ' + ePathDFN2.Text);
+      except
+        on E: Exception do
+          ShowMessage('Ошибка при открытии файла: ' + E.Message);
+      end;
+    end
+    else
+    begin
+    ShowMessage('Файл не существует: ' + ePathDFN2.Text); // Якщо був введений не коректний шлях до файлу
+    end;
+  end;
 end;
 
 procedure TForm1.bOpenExcelClick(Sender: TObject);
@@ -140,7 +304,7 @@ begin
     begin
       if IsFileCreate then
       begin
-        ShellExecute(0, 'open', PChar(ExcelPath), PChar('"'+SavedFilePath+'"'), nil, SW_SHOW);
+        ShellExecute(0, 'open', PChar(ExcelPath), PChar('"'+SavedTSVFilePath+'"'), nil, SW_SHOW);
       end;
     end
     else
@@ -148,12 +312,46 @@ begin
       ShowMessage('Excel не знайдено. Виберіть файл Excel через діалог.');
       if OpenDialog4.Execute then
       begin
-        ShellExecute(0, 'open', PChar(OpenDialog4.FileName), PChar('"'+SavedFilePath+'"'), nil, SW_SHOW);
+        ShellExecute(0, 'open', PChar(OpenDialog4.FileName), PChar('"'+SavedTSVFilePath+'"'), nil, SW_SHOW);
       end;
     end;
   end
   else
     ShowMessage('Спочатку створіть TSV файл');
+end;
+
+procedure TForm1.bOpenCalcClick(Sender: TObject);
+var
+  CalcPath: string;
+begin
+  CalcPath := 'C:\Program Files\LibreOffice\program\soffice.exe';
+  if IsFileCreate then
+  begin
+    if FileExists(CalcPath) then
+    begin
+      if IsFileCreate then
+      begin
+        ShellExecute(0, 'open', PChar(CalcPath), PChar('"'+SavedTSVFilePath+'"'), nil, SW_SHOW);
+      end;
+    end
+    else
+    begin
+      ShowMessage('Calc не знайдено. Виберіть файл Calc через діалог.');
+      if OpenDialog5.Execute then
+      begin
+        ShellExecute(0, 'open', PChar(OpenDialog5.FileName), PChar('"'+SavedTSVFilePath+'"'), nil, SW_SHOW);
+      end;
+    end;
+  end
+  else
+    ShowMessage('Спочатку створіть TSV файл');
+end;
+
+procedure TForm1.FormDestroy(Sender: TObject);
+begin
+  OriginalDFNFileContent.Free; // Звільняємо вміст скопійованого контенту з файлу при закритті застосунку.
+  OriginalTSVFileContent.Free;
+  OriginalDFN2FileContent.Free;
 end;
 
 function TForm1.ContainsCyrillicCharacters(const input: string): Boolean; // Функція для перевірки чи є слова кирилицею
@@ -168,73 +366,6 @@ begin
       Exit;
     end;
   end;
-end;
-
-procedure TForm1.ePath1KeyPress(Sender: TObject; var Key: Char);
-
-var FilePath: string;
-
-begin
-  if (Key = #13) then // Якщо була натиснута клавіша #13 - код клавіші "Enter"
-  begin
-    FilePath := ePath1.Text; // Записуємо шлях, який був вписаний в відповідне поле "edit"
-    if FileExists(FilePath) then // Перевірка чи існує файл
-    begin
-      try
-        if OriginalFileContent <> nil then // Перевірка чи був вже відкритий файл до цього моменту
-          OriginalFileContent.Free; // Звільнюємо попередній вміст, якщо був
-
-        OriginalFileContent := TStringList.Create; // Створюємо об'єкт типу TStringList
-        OriginalFileContent.LoadFromFile(FilePath); // Записуємо контент з відкритого файлу
-        OpenedFilePath := FilePath; // Записуємо шлях відкритого файлу в глобальну змінну
-        ShowMessage('Файл відкрито: ' + FilePath);
-      except
-        on E: Exception do
-          ShowMessage('Помилка при відкритті файлу: ' + E.Message);
-      end;
-    end
-    else
-    begin
-    ShowMessage('Файл не існує: ' + FilePath); // Якщо був введений не коректний шлях до файлу
-    end;
-  end;
-end;
-
-procedure TForm1.FormDestroy(Sender: TObject);
-begin
-  OriginalFileContent.Free; // Звільняємо вміст скопійованого контенту з файлу при закритті застосунку.
-end;
-
-procedure TForm1.spChooseDFN2Click(Sender: TObject);
-begin
-  if OpenDialog3.Execute then
-  ePath3.Text := OpenDialog3.FileName;
-end;
-
-procedure TForm1.spChooseDFNClick(Sender: TObject);
-begin
-  if OpenDialog1.Execute then // Перевірка чи була натиснута кнопка відкриття обраного файлу
-  begin
-    try
-      if OriginalFileContent <> nil then // Перевірка чи був вже відкритий файл до цього моменту
-        OriginalFileContent.Free; // Звільнюємо попередній вміст, якщо був
-
-      ePath1.Text := OpenDialog1.FileName; // Записуємо шлях до файла в відповідне поле "edit"
-      OriginalFileContent := TStringList.Create; // Створюємо об'єкт типу TStringList
-      OriginalFileContent.LoadFromFile(OpenDialog1.FileName); // Записуємо контент з відкритого файлу
-      OpenedFilePath := OpenDialog1.FileName; // Записуємо шлях відкритого файлу в глобальну змінну
-      ShowMessage('Файл DFN був відкритий.');
-    except
-      on E: Exception do
-          ShowMessage('Помилка при відкритті файлу: ' + E.Message);
-    end;
-  end;
-end;
-
-procedure TForm1.spChooseTSVClick(Sender: TObject);
-begin
-  if OpenDialog2.Execute then
-  ePath2.Text := OpenDialog2.FileName;
 end;
 
 function TForm1.IsCharCyrillic(c: Char): Boolean; // Функція для перевірки чи є літера кирилицею
