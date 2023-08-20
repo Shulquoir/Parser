@@ -39,23 +39,23 @@ type
     procedure ePathTSVKeyPress(Sender: TObject; var Key: Char);
     procedure ePathDFN2KeyPress(Sender: TObject; var Key: Char);
     procedure bWriteDFNClick(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
   private
     { Private declarations }
-    function ContainsCyrillicCharacters(const input: string): Boolean;
-    function IsCharCyrillic(c: Char): Boolean;
-    function ExtractFieldValue(const field: string): string;
-    function ExtractField(const fields: TArray<string>; const fieldName: string): string;
   public
     { Public declarations }
+    OriginalDFNFileContent, OriginalTSVFileContent, OriginalDFN2FileContent: TStringList; // Створюємо глобальну змінну, яка буде зберігати контент відкритого файлу до моменту переобрання або зберігання файлу
+    OpenedDFNFilePath, OpenedTSVFilePath, OpenedDFN2FilePath: String; // Створюємо глобальні змінні, які будуть зберігати шлях відкритих файлів
+    SavedTSVFilePath: String; // Створюємо глобальну змінну для зберігання шляху збереженого TSV файлу для можливості відкрити його в сторонніх програмах
+    IsFileCreate: boolean; // Змінна для перевірки, чи був збережений TSV файл, для відкриття його в сторонніх програмах
+    function ContainsCyrillicCharacters(const input: string): Boolean;
+    function IsCharCyrillic(c: Char): Boolean;
+    function ExtractField(const fields: TArray<string>; const fieldName: string): string;
 
   end;
 
 var
   Form1: TForm1;
-  OriginalDFNFileContent, OriginalTSVFileContent, OriginalDFN2FileContent: TStringList; // Створюємо глобальну змінну, яка буде зберігати контент відкритого файлу до моменту переобрання або зберігання файлу
-  OpenedDFNFilePath, OpenedTSVFilePath, OpenedDFN2FilePath: String; // Створюємо глобальні змінні, які будуть зберігати шлях відкритих файлів
-  SavedTSVFilePath: String; // Створюємо глобальну змінну для зберігання шляху збереженого TSV файлу для можливості відкрити його в сторонніх програмах
-  IsFileCreate: boolean = false; // Змінна для перевірки, чи був збережений TSV файл, для відкриття його в сторонніх програмах
 
 implementation
 
@@ -84,19 +84,21 @@ begin
             var fields := line.Split([#4]);
             if Length(fields) >= 3 then
             begin
-              var id := ExtractFieldValue(ExtractField(fields, 'ID'));
-              var orig := ExtractFieldValue(ExtractField(fields, 'Orig'));
-              var curr := ExtractFieldValue(ExtractField(fields, 'Curr'));
+              var id := ExtractField(fields, 'ID');
+              var orig := ExtractField(fields, 'Orig');
+              var curr := ExtractField(fields, 'Curr');
               OutputFileContent.Add(id + #9 + orig + #9 + curr);
             end;
           end;
         end;
-        if Pos('.tsv', sdSaveTSV.FileName) > 0 then // Перевірка чи є в імені зберігаємого файлу розширення tsv
+        if Pos('.tsv', sdSaveTSV.FileName) > 0 then // Перевірка, чи є в імені зберігаємого файлу розширення tsv
           OutputFileContent.SaveToFile(sdSaveTSV.FileName) // Запис форматованого контенту в зберігаємий файл
         else
-          OutputFileContent.SaveToFile(sdSaveTSV.FileName + '.tsv'); // Запис форматованого контенту в зберігаємий файл з дописуванням формату
+          OutputFileContent.SaveToFile(sdSaveTSV.FileName + '.tsv'); // Запис форматованого контенту
+          // в зберігаємий файл з дописуванням формату
 
-        SavedTSVFilePath := sdSaveTSV.FileName; // Записуємо шлях створеного файлу
+        SavedTSVFilePath := sdSaveTSV.FileName; // Записуємо шлях створеного файлу в глобальну змінну,
+        // необхідно для подальшого відкриття файлу в сторонніх програмах
         ShowMessage('Файл был успешно сконвертирован и сохранен в формате TSV.' + sdSaveTSV.FileName);
       finally
         OutputFileContent.Free;
@@ -110,49 +112,50 @@ end;
 procedure TForm1.bWriteDFNClick(Sender: TObject);
 
 var FieldA, FieldB: string;
+
 begin
-   if ChangeFileExt(ExtractFileName(odOpenTSV.FileName), '') <> ChangeFileExt(ExtractFileName(odOpenDFN2.FileName), '') then
+   if ChangeFileExt(ExtractFileName(OpenedTSVFilePath), '') <>
+     ChangeFileExt(ExtractFileName(OpenedDFN2FilePath), '') then //
    begin
      ShowMessage('Пожалуйста, откройте TSV и DFN файлы с совпадающими именами.');
      Exit;
    end;
 
-   if (OriginalTSVFileContent <> nil) and (OriginalDFN2FileContent <> nil) then
+   if (OriginalTSVFileContent <> nil) and (OriginalDFN2FileContent <> nil) then //
    begin
-     try
-       for var TSVLine := 0 to OriginalTSVFileContent.Count - 1 do
+     for var TSVLine := 0 to OriginalTSVFileContent.Count - 1 do
+     begin
+       FieldA := OriginalTSVFileContent[TSVLine].Split([#9])[0];
+       for var DFNLine := 0 to OriginalDFN2FileContent.Count - 1 do
        begin
-         FieldA := OriginalTSVFileContent[TSVLine].Split([#9])[0];
-         for var DFNLine := 0 to OriginalDFN2FileContent.Count - 1 do
-         begin
-           FieldB := OriginalDFN2FileContent[DFNLine].Split([#4])[0]
-             .Substring(Pos('ID:', OriginalDFN2FileContent[DFNLine].Split([#4])[0]) + 2); // Знаходження значення після "ID:";
-           if Pos(FieldA, FieldB) = 1 then // Перевіряємо, чи поле починається з ідентичного поля
-           begin
-             for var CurrField := 0 to Length(OriginalDFN2FileContent[DFNLine].Split([#4])) - 1 do
-             begin
-               if Pos('Curr:', OriginalDFN2FileContent[DFNLine].Split([#4])[CurrField]) >= 1 then
-               begin
-                 OriginalDFN2FileContent[DFNLine] := OriginalDFN2FileContent[DFNLine]
-                   .Replace(OriginalDFN2FileContent[DFNLine].Split([#4])[CurrField],
-                   'Curr:' + QuotedStr(OriginalTSVFileContent[TSVLine].Split([#9])[2]));
-                 Break; // Вийти з циклу, якщо знайдено відповідне поле
-               end;
+         FieldB := OriginalDFN2FileContent[DFNLine].Split([#4])[0] // Знаходження значення поля "ID" в DFN файлі;
+           .Substring(Pos('ID:', OriginalDFN2FileContent[DFNLine].Split([#4])[0]) + 2);
+         if Pos(FieldA, FieldB) = 1 then // Перевірка, чи зміст поля ID в DFN файлі ідентичне першому полю TSV файла
+         begin // Якщо було знайдено співпадіння, то шукаємо поле "Curr"
+           for var CurrField := 0 to Length(OriginalDFN2FileContent[DFNLine].Split([#4])) - 1 do
+           begin // Перебираємо поля рядка в якому було знайдено співпадіння поля "ID" для знаходження номера поля
+           // в якому присутня назва поля "Curr"
+             if Pos('Curr:', OriginalDFN2FileContent[DFNLine].Split([#4])[CurrField]) >= 1 then
+             begin //Перевірка поля на вміст 'Curr:'
+               OriginalDFN2FileContent[DFNLine] := OriginalDFN2FileContent[DFNLine]
+                 .Replace(OriginalDFN2FileContent[DFNLine].Split([#4])[CurrField],
+                 'Curr:' + QuotedStr(OriginalTSVFileContent[TSVLine].Split([#9])[2]));
+                 // В рядку з ідентичним полем "ID" замінюємо зміст поля "Curr",
+                 // порядковий номер якого дорівнює CurrField, на 3 поле з файлу TSV
+               Break; // Вийти з циклу, якщо знайдено відповідне поле
              end;
-           Break;
            end;
+         Break;
          end;
        end;
-
-       // Збереження оновленого файлу DFN
-        OriginalDFN2FileContent.SaveToFile(odOpenDFN2.FileName);
-        ShowMessage('Файл DFN был перезаписан.');
-     finally
-
      end;
+       OriginalDFN2FileContent.SaveToFile(OpenedDFNFilePath);
+       // Зберігаємо зміни у файлі DFN, використовуємо глобальну змінну зі збереженим шляхом відкритого файлу,
+       // необхідно у випадку, якщо файл був відкритий за допомогою текстового поля
+       ShowMessage('Файл DFN был перезаписан.');
    end
    else
-   ShowMessage('Откройте TSV и DFN файлы!');
+     ShowMessage('Откройте TSV и DFN файлы с совпадающими именами!');
 end;
 
 procedure TForm1.spChooseDFNClick(Sender: TObject);
@@ -188,7 +191,7 @@ begin
         OriginalDFNFileContent := TStringList.Create; // Створюємо об'єкт типу TStringList
         OriginalDFNFileContent.LoadFromFile(ePathDFN.Text); // Записуємо контент з відкритого файлу
         OpenedDFNFilePath := ePathDFN.Text; // Записуємо шлях відкритого файлу в глобальну змінну
-        //ShowMessage('Файл был открыт: ' + ePathDFN.Text);
+        ShowMessage('Файл был открыт: ' + ePathDFN.Text);
       except
         on E: Exception do
           ShowMessage('Ошибка при открытии файла: ' + E.Message);
@@ -234,7 +237,7 @@ begin
         OriginalTSVFileContent := TStringList.Create; // Створюємо об'єкт типу TStringList
         OriginalTSVFileContent.LoadFromFile(ePathTSV.Text); // Записуємо контент з відкритого файлу
         OpenedTSVFilePath := ePathTSV.Text; // Записуємо шлях відкритого файлу в глобальну змінну
-        //ShowMessage('Файл был открыт: ' + ePathTSV.Text);
+        ShowMessage('Файл был открыт: ' + ePathTSV.Text);
       except
         on E: Exception do
           ShowMessage('Ошибка при открытии файла: ' + E.Message);
@@ -280,7 +283,7 @@ begin
         OriginalDFN2FileContent := TStringList.Create; // Створюємо об'єкт типу TStringList
         OriginalDFN2FileContent.LoadFromFile(ePathDFN2.Text); // Записуємо контент з відкритого файлу
         OpenedDFN2FilePath := ePathDFN2.Text; // Записуємо шлях відкритого файлу в глобальну змінну
-        //ShowMessage('Файл был открыт: ' + ePathDFN2.Text);
+        ShowMessage('Файл был открыт: ' + ePathDFN2.Text);
       except
         on E: Exception do
           ShowMessage('Ошибка при открытии файла: ' + E.Message);
@@ -347,20 +350,25 @@ begin
     ShowMessage('Спочатку створіть TSV файл');
 end;
 
-procedure TForm1.FormDestroy(Sender: TObject);
+procedure TForm1.FormCreate(Sender: TObject);
 begin
-  OriginalDFNFileContent.Free; // Звільняємо вміст скопійованого контенту з файлу при закритті застосунку.
-  OriginalTSVFileContent.Free;
-  OriginalDFN2FileContent.Free;
+  IsFileCreate := false;
 end;
 
-function TForm1.ContainsCyrillicCharacters(const input: string): Boolean; // Функція для перевірки чи є слова кирилицею
-var i: Integer;
+procedure TForm1.FormDestroy(Sender: TObject);
+begin
+  OriginalDFNFileContent.Free; // Звільняємо вміст скопійованого контенту з DFN файлу при закритті застосунку
+  OriginalTSVFileContent.Free; // Звільняємо вміст скопійованого контенту з TSV файлу при закритті застосунку
+  OriginalDFN2FileContent.Free; // Звільняємо вміст скопійованого контенту з DFN файлу при закритті застосунку
+end;
+
+function TForm1.ContainsCyrillicCharacters(const input: string): Boolean;
+var i: Integer;                   // Функція для перевірки чи містить рядок кирилицю
 begin
   Result := False;
   for i := 1 to Length(input) do
   begin
-    if IsCharCyrillic(input[i]) then
+    if IsCharCyrillic(input[i]) then // Використовуємо ще одну функцію для перевірки чи є літера кирилицею
     begin
       Result := True;
       Exit;
@@ -370,35 +378,30 @@ end;
 
 function TForm1.IsCharCyrillic(c: Char): Boolean; // Функція для перевірки чи є літера кирилицею
 begin
-  Result := (c >= 'А') and (c <= 'Я') or (c >= 'а') and (c <= 'я') or (c = 'Ё') or (c = 'ё');
-end;
-
-function TForm1.ExtractFieldValue(const field: string): string;
-var
-  colonPos: Integer;
-  fieldValue: string;
-begin
-  colonPos := Pos(':', field);
-  if colonPos > 0 then
-  begin
-    fieldValue := Trim(Copy(field, colonPos + 1, MaxInt));
-    if (Length(fieldValue) >= 2) and (fieldValue[1] = '''') and (fieldValue[Length(fieldValue)] = '''') then
-      Result := Copy(fieldValue, 2, Length(fieldValue) - 2)
-    else
-      Result := fieldValue;
-  end
-  else
-    Result := '';
-end;
+  Result := (c >= 'А') and (c <= 'Я') or (c >= 'а') and (c <= 'я') or (c = 'Ё') or (c = 'ё'); // Повертає true
+end;                                                    // якщо змінна "с" входить в діапазон зазначених літер
 
 function TForm1.ExtractField(const fields: TArray<string>; const fieldName: string): string;
+                                         // Функція для знаходження змісту поля за його назвою
+var fieldValue: string;
+
 begin
-  for var field in fields do
+  for var field in fields do // Перебираємо поля в рядку
   begin
-    if Pos(fieldName, field) > 0 then
-      Exit(Trim(Copy(field, Length(fieldName) + 1, MaxInt)));
+    if Pos(fieldName, field) > 0 then // Перевірка, чи міститься в полі задана назва поля
+    begin
+      fieldValue := (Copy(field, Length(fieldName) + 2, MaxInt));  // Якщо знайдено, то повертає зміст поля
+      Break;
+    end
+    else
+      Result := ''; // Якщо не було знайдено ім'я поля
   end;
-  Result := '';
+
+  if (Length(fieldValue) >= 2) and (fieldValue[1] = '''') and (fieldValue[Length(fieldValue)] = '''') then
+    // Перевірка чи містить зміст поля в кінці та на початку одинарні лапки
+    Result := Copy(fieldValue, 2, Length(fieldValue) - 2) // Якщо містить, то прибирає
+  else
+    Result := fieldValue; // Якщо ні, то нічого не змінюється
 end;
 
 end.

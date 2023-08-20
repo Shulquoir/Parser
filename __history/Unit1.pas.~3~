@@ -1,0 +1,69 @@
+unit Unit1;
+
+interface
+
+uses
+  DUnitX.TestFramework, ufMain, Vcl.Dialogs, Winapi.Windows, Vcl.Buttons, System.SysUtils,
+  Vcl.Graphics, System.Variants, ShellAPI, Winapi.Messages, Vcl.StdCtrls, Vcl.Controls,
+  Vcl.Forms, Vcl.ExtDlgs, System.Classes;
+
+type
+  [TestFixture]
+  TParserTests = class
+    FForm: TForm1;
+  public
+    [Setup]
+    procedure Setup;
+    [TearDown]
+    procedure TearDown;
+
+    procedure TestCreateTSVButtonClick;
+  end;
+
+implementation
+
+procedure TParserTests.Setup;
+begin
+  FForm := TForm1.Create(nil);
+end;
+
+procedure TParserTests.TearDown;
+begin
+  FForm.Free;
+  FForm := nil;
+end;
+
+procedure TParserTests.TestCreateTSVButtonClick;
+var
+  OutputFilePath: string;
+  ExpectedOutput: TStringList;
+begin
+  // Встановіть потрібні дані та налаштування перед тестом
+  FForm.OpenedDFNFilePath := 'D:\Programs\Embarcadero\ТЗ\Unit1.dfn';
+  FForm.OriginalDFNFileContent := TStringList.Create;
+  FForm.OriginalDFNFileContent.Add('ID' + #4 + 'Orig' + #4 + 'Curr');
+  FForm.OriginalDFNFileContent.Add('1' + #4 + 'Hello' + #4 + 'Привіт');
+
+  // Викликаємо процедуру, яку хочемо протестувати
+  FForm.bCreateTSVClick(nil);
+
+  // Очікувані результати
+  OutputFilePath := 'D:\Programs\Embarcadero\ТЗ\Unit1.tsv';
+  ExpectedOutput := TStringList.Create;
+  ExpectedOutput.Add('ID' + #9 + 'Значения' + #9 + 'Перевод');
+  ExpectedOutput.Add('1' + #9 + 'Hello' + #9 + 'Привіт');
+
+  // Завантажуємо створений файл та порівнюємо з очікуваним результатом
+  var ActualOutput := TStringList.Create;
+  ActualOutput.LoadFromFile(FForm.sdSaveTSV.FileName);
+  Assert.AreEqual(ExpectedOutput.Text, ActualOutput.Text);
+
+  // Прибираємо за собою
+  ActualOutput.Free;
+  ExpectedOutput.Free;
+  DeleteFile(FForm.sdSaveTSV.FileName);
+end;
+
+initialization
+  TDUnitX.RegisterTestFixture(TParserTests);
+end.

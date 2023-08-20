@@ -12,6 +12,7 @@ object Form1: TForm1
   Font.Style = []
   Position = poScreenCenter
   Visible = True
+  OnCreate = FormCreate
   OnDestroy = FormDestroy
   TextHeight = 15
   object spChooseDFN: TSpeedButton
