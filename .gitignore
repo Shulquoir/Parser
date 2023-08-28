@@ -23,7 +23,7 @@
 __history
 
 # Delphi compiled files
-/win32
+Win32/
 
 # Compiled help files
 *.chm
