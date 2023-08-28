@@ -5,7 +5,7 @@ interface
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes,
   Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtDlgs,
-  Vcl.Buttons, ShellAPI,Vcl.ExtCtrls, FileOpener;
+  Vcl.Buttons, ShellAPI, Vcl.ExtCtrls, FileOpener;
 
 type
   TMainForm = class(TForm)
@@ -48,8 +48,6 @@ type
     procedure FormShow(Sender: TObject);
   private
     { Private declarations }
-  public
-    { Public declarations }
     OriginalDFNFileContent, OriginalTSVFileContent, OriginalDFNToModFileContent: TStringList; // Змінні, які будуть зберігати контент відкритого файлу до моменту переобрання або зберігання файлу
     OpenedDFNFilePath, OpenedTSVFilePath, OpenedDFNToModFilePath: String; // Змінні, які будуть зберігати шлях відкритих файлів
     SavedTSVFilePath: String; // Змінна для зберігання шляху збереженого TSV файлу для можливості відкрити його в сторонніх програмах
@@ -58,6 +56,9 @@ type
     function ContainsCyrillicCharacters(const input: string): Boolean;
     function IsCharCyrillic(c: Char): Boolean;
     function ExtractField(const fields: TArray<string>; const fieldName: string): string;
+  public
+    { Public declarations }
+
   end;
 
 var
@@ -114,8 +115,8 @@ begin
     IsFileCreate := true; // Підтвердження, що TSV файл був збережений, для подальшого використання в сторонніх програмах
     ShowMessage('Файл был успешно сконвертирован и сохранен в формате TSV.' + sdSaveTSV.FileName);
   finally
-    FreeAndNil(OriginalDFNFileContent);
-    FreeAndNil(OutputFileContent); // Звільняємо зміст змінної з форматованим контентом
+    FreeAndNil(OriginalDFNFileContent); // Звільняємо зміст копії відкритого файлу
+    FreeAndNil(OutputFileContent); // Звільняємо зміст з форматованим контентом
   end;
 end;
 

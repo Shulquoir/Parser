@@ -1,0 +1,59 @@
+# Compiled binaries
+*.exe
+*.dll
+*.bpl
+*.dcu
+*.dcp
+*.map
+
+# Compiled object files
+*.obj
+*.o
+
+# Debug files
+*.map
+*.rsm
+*.rsc
+
+# IDE files
+*.dsk
+*.local
+*.identcache
+*.identcache.r32
+__history
+
+# Delphi compiled files
+/win32
+
+# Compiled help files
+*.chm
+
+# Compiled resource files
+*.res
+*.resx
+*.resources
+
+# Package cache
+__history
+*.dproj.local
+*.groupproj.local
+*.identcache.local
+*.rsvars.local
+*.drc
+*.dsk
+*.tvsconfig
+*.drc
+*.local
+*.dll
+*.bpl
+*.bpi
+*.dcp
+
+# Delphi backup files
+*.~*
+
+# OS generated files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
