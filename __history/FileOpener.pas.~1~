@@ -1,0 +1,19 @@
+unit uFileOpener;
+
+interface
+
+uses
+  Dialogs, Classes, SysUtils, StdCtrls;
+
+implementation
+
+type
+  TFileOpener = class
+  public
+    class function OpenDFNFile(var ePathDFN: TEdit; var OriginalDFNFileContent: TStringList;
+      var OpenedDFNFilePath: string): Boolean;
+    class procedure OnPathDFNKeyPress(Sender: TObject; var Key: Char; var OriginalDFNFileContent: TStringList;
+      var OpenedDFNFilePath: string);
+  end;
+
+end.

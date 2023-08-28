@@ -1,0 +1,15 @@
+program Parser;
+
+uses
+  Vcl.Forms,
+  ufMain in 'ufMain.pas' {Form1},
+  FileOpener in 'FileOpener.pas';
+
+{$R *.res}
+
+begin
+  Application.Initialize;
+  Application.MainFormOnTaskbar := True;
+  Application.CreateForm(TForm1, Form1);
+  Application.Run;
+end.
