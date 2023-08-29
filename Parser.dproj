@@ -108,7 +108,8 @@
             <Form>MainForm</Form>
             <FormType>dfm</FormType>
         </DCCReference>
-        <DCCReference Include="FileOpener.pas"/>
+        <DCCReference Include="Controller.pas"/>
+        <DCCReference Include="Model.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

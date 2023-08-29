@@ -15,7 +15,6 @@ object MainForm: TMainForm
   Position = poScreenCenter
   Visible = True
   OnCreate = FormCreate
-  OnDestroy = FormDestroy
   OnShow = FormShow
   TextHeight = 15
   object pCreateTSV: TPanel
