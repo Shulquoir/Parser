@@ -3,7 +3,7 @@ unit Model;
 interface
 
 uses
-  SysUtils, Classes, StdCtrls, Dialogs;
+  SysUtils, Classes, Vcl.StdCtrls, Vcl.Dialogs;
 
 type
   TModel = class
@@ -17,6 +17,12 @@ type
 
 implementation
 
+/// <summary>
+/// Конвертує вміст DFN файлу в формат TSV та зберігає його з обраним ім'ям та розширенням.
+/// </summary>
+/// <param name="OpenedDFNFilePath">Шлях до відкритого DFN файлу.</param>
+/// <param name="sdSaveTSV">Діалогове вікно для збереження TSV файлу.</param>
+/// <returns>Шлях до збереженого TSV файлу.</returns>
 class function TModel.ConvertDFNToTSV(const OpenedDFNFilePath: string; var sdSaveTSV: TSaveDialog): string;
 var
   OriginalDFNFileContent, OutputFileContent: TStringList;
@@ -46,13 +52,15 @@ begin
     end;
 
     if Pos('.tsv', sdSaveTSV.FileName) = 0 then // Перевірка, чи є в імені зберігаємого файлу розширення tsv
-      begin
-        OutputFileContent.SaveToFile(sdSaveTSV.FileName + '.tsv'); // Запис форматованого контенту в зберігаємий файл
-        Result := sdSaveTSV.FileName + '.tsv';                                       // з додаванням розширення файла
-        Exit;
-      end;
+    begin
+      OutputFileContent.SaveToFile(sdSaveTSV.FileName + '.tsv'); // Запис форматованого контенту в зберігаємий файл
+      Result := sdSaveTSV.FileName + '.tsv';                                       // з додаванням розширення файла
+      Exit;
+    end;
+
     OutputFileContent.SaveToFile(sdSaveTSV.FileName); // Запис форматованого контенту в зберігаємий файл
     Result := sdSaveTSV.FileName;
+
   finally
     FreeAndNil(OriginalDFNFileContent); // Звільняємо зміст копії відкритого файлу
     FreeAndNil(OutputFileContent); // Звільняємо зміст з форматованим контентом
@@ -61,6 +69,12 @@ end;
 
 //------------------------------------------------------------------------------
 
+/// <summary>
+/// Модифікує вміст DFN файлу на основі відкритого TSV файлу та зберігає зміни у відкритому DFN файлі.
+/// </summary>
+/// <param name="OpenedTSVFilePath">Шлях до відкритого TSV файлу.</param>
+/// <param name="OpenedDFNToModFilePath">Шлях до відкритого DFN файлу для модифікації.</param>
+/// <returns>True, якщо зміни в DFN файлі були успішно збережені.</returns>
 class function TModel.ModifyDFN(const OpenedTSVFilePath: string; const OpenedDFNToModFilePath: string): Boolean;
 var
   OriginalTSVFileContent, OriginalDFNToModFileContent: TStringList;
@@ -72,19 +86,22 @@ begin
   try
     OriginalTSVFileContent := TStringList.Create;
     OriginalDFNToModFileContent := TStringList.Create;
+
     OriginalTSVFileContent.LoadFromFile(OpenedTSVFilePath); // Записуємо контент з файлу
     OriginalDFNToModFileContent.LoadFromFile(OpenedDFNToModFilePath); // Записуємо контент з файлу
 
     for var TSVLine := 0 to OriginalTSVFileContent.Count - 1 do // Перебираємо рядки в файлі TSV
     begin
       tsvIDField := OriginalTSVFileContent[TSVLine].Split([#9])[0]; // Передаємо в змінну перше поле з рядка TSV файла
+
       for var DFNLine := 0 to OriginalDFNToModFileContent.Count - 1 do // Перебираємо рядки в файлі DFN
       begin
         dfnIDField := ExtractField(OriginalDFNToModFileContent[DFNLine].Split([#4]), 'ID'); // Записуємо поле "ID" DFN файла
+
         if Pos(tsvIDField, dfnIDField) = 1 then // Перевірка, чи зміст поля ID в DFN файлі ідентичне першому полю TSV файла
         begin // Якщо було знайдено співпадіння, то шукаємо поле "Curr"
-          var OriginalDFNLine := OriginalDFNToModFileContent[DFNLine]; // Копія повного рядка DFN файлу для
-                                                                      // подальшої заміни в ньому поля Curr
+          var OriginalDFNLine := OriginalDFNToModFileContent[DFNLine]; // Копіюємо рядок DFN файлу для подальшої
+                                                                                     // заміни в ньому поля Curr
           for var CurrField := 0 to Length(OriginalDFNToModFileContent[DFNLine].Split([#4])) - 1 do // Перебираємо
           begin  // поля рядка в якому було знайдено співпадіння поля "ID" для знаходження номера поля в якому
                   // присутня назва поля "Curr", використаємо потім цей номер для перезапису відповідного поля
@@ -102,10 +119,10 @@ begin
         end;
       end;
     end;
-    OriginalDFNToModFileContent.SaveToFile(OpenedDFNToModFilePath);
+
+    OriginalDFNToModFileContent.SaveToFile(OpenedDFNToModFilePath); // Зберігаємо зміни у файлі DFN
     Result := true;
-    // Зберігаємо зміни у файлі DFN, використовуємо глобальну змінну зі збереженим шляхом відкритого файлу,
-    // необхідно у випадку, якщо файл був відкритий за допомогою текстового поля
+
   finally
     FreeAndNil(OriginalTSVFileContent);
     FreeAndNil(OriginalDFNToModFileContent);
@@ -114,8 +131,15 @@ end;
 
 //------------------------------------------------------------------------------
 
+/// <summary>
+/// Перевіряє, чи містить рядок кириличні символи.
+/// </summary>
+/// <param name="input">Рядок для перевірки.</param>
+/// <returns>True, якщо рядок містить кириличні символи, інакше - False.</returns>
 class function TModel.ContainsCyrillicCharacters(const input: string): Boolean;
-var i: Integer;                   // Функція для перевірки чи містить рядок кирилицю
+var
+  i: Integer;
+
 begin
   Result := False; // Записуємо в результат фунцкції false, якщо не буде знайдено кирилицю
   for i := 1 to Length(input) do // Перебираємо літери в переданому рядку
@@ -130,24 +154,35 @@ end;
 
 //------------------------------------------------------------------------------
 
-class function TModel.IsCharCyrillic(c: Char): Boolean; // Функція для перевірки чи є літера кирилицею
+/// <summary>
+/// Перевіряє, чи є символ кириличним.
+/// </summary>
+/// <param name="c">Символ для перевірки.</param>
+/// <returns>True, якщо символ є кириличним, інакше - False.</returns>
+class function TModel.IsCharCyrillic(c: Char): Boolean;
 begin
-  Result := (c >= 'А') and (c <= 'Я') or (c >= 'а') and (c <= 'я') or (c = 'Ё') or (c = 'ё'); // Повертає true
-end;                                                 // якщо змінна "с" входить в діапазон зазначених символів
+  Result := (c >= 'А') and (c <= 'Я') or (c >= 'а') and (c <= 'я') or (c = 'Ё') or (c = 'ё');
+end;
 
 //------------------------------------------------------------------------------
 
+/// <summary>
+/// Знаходить зміст поля за його назвою.
+/// </summary>
+/// <param name="fields">Масив полів, серед яких здійснюється пошук.</param>
+/// <param name="fieldName">Назва поля, яке необхідно знайти.</param>
+/// <returns>Зміст поля, якщо знайдено, або порожній рядок, якщо не знайдено.</returns>
 class function TModel.ExtractField(const fields: TArray<string>; const fieldName: string): string;
-// Функція для знаходження змісту поля за його назвою
-var fieldValue: string;
+var
+  fieldValue: string;
 
 begin
   for var field in fields do // Перебираємо поля в рядку
   begin
     if Pos(fieldName, field) > 0 then // Перевірка, чи міститься в полі задана назва поля
     begin
-      fieldValue := (Copy(field, Pos(fieldName, field) + Length(fieldName) + 1, MaxInt));  // Якщо знайдено, то повертає зміст поля,
-                   // тобто повертає зміст поля, без імені поля та символу ':', та весь зміст до кінця поля
+      fieldValue := (Copy(field, Pos(fieldName, field) + Length(fieldName) + 1, MaxInt));  // Якщо знайдено,
+                      // то повертає зміст поля - без імені поля та символу ':' та весь зміст до кінця поля
       if (Length(fieldValue) >= 2) and (fieldValue[1] = '''') and (fieldValue[Length(fieldValue)] = '''') then
       // Перевірка чи містить зміст поля в кінці та на початку одинарні лапки
         Result := Copy(fieldValue, 2, Length(fieldValue) - 2) // Якщо містить, то прибирає
@@ -159,6 +194,5 @@ begin
       Result := ''; // Якщо не було знайдено ім'я поля
   end;
 end;
-
 
 end.

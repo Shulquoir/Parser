@@ -3,47 +3,62 @@ unit Controller;
 interface
 
 uses
-  Winapi.Windows, Dialogs, Classes, SysUtils, StdCtrls, ShellAPI, Model;
+  Winapi.Windows, Vcl.Dialogs, Classes, SysUtils, Vcl.StdCtrls, ShellAPI, Model;
 
 type
   TController = class
+  private
+    const DFN_NAME: string = 'DFN';
+    const TSV_NAME: string = 'TSV';
   public
-    class function ChooseFile(var filePath: string; const FileExtension: string): Boolean;
+    class function ChooseFile(var odOpenFileDialog: TOpenDialog; const FileExtension: string): string;
     class function OpenFileByName(Sender: TObject; const Key: Char): Boolean;
     class function CreateTSV(const OpenedDFNFilePath: string; var SavedTSVFilePath: string): Boolean;
     class function RewriteDFN(const OpenedTSVFilePath: string; const OpenedDFNToModFilePath: string): Boolean;
-    class procedure OpenExcel(const SavedTSVFilePath: string; const IsFileCreate: Boolean);
-    class procedure OpenCalc(const SavedTSVFilePath: string; const IsFileCreate: Boolean);
+    class function OpenByProgram(const SavedTSVFilePath: string; const IsFileCreate: Boolean; const ProgramName: string): Boolean;
   end;
 
 implementation
 
-class function TController.ChooseFile(var filePath: string; const FileExtension: string): Boolean;
+/// <summary>
+/// Обирає файл з вказаним розширенням.
+/// </summary>
+/// <param name="odOpenFileDialog">Діалогове вікно відкриття файлу.</param>
+/// <param name="FileExtension">Рядок з фільтром файлів для діалогового вікна.</param>
+/// <returns>Шлях до обраного файлу або порожній рядок, якщо файл не був обраний.</returns>
+class function TController.ChooseFile(var odOpenFileDialog: TOpenDialog; const FileExtension: string): string;
 var
-  odOpenFileDialog: TOpenDialog;
+  TypeOpenFile: string;
 
 begin
-  Result := False;
+  Result := '';
+  TypeOpenFile := DFN_NAME;
 
-  odOpenFileDialog := TOpenDialog.Create(nil);
-  try
-    odOpenFileDialog.Filter := FileExtension;
-    if odOpenFileDialog.Execute then
-    begin
-      filePath := odOpenFileDialog.FileName;
-      MessageDlg('Файл DFN был выбран.', mtInformation, [mbOK], 0);
-      Result := True;
-    end;
-  finally
-    odOpenFileDialog.Free;
+  if Pos(FileExtension, 'TSV Files|*.tsv') = 1 then
+    TypeOpenFile := TSV_NAME;
+
+  odOpenFileDialog.Filter := FileExtension;
+  if odOpenFileDialog.Execute then
+  begin
+    Result := odOpenFileDialog.FileName;
+    MessageDlg('Файл ' + TypeOpenFile + ' был выбран.', mtInformation, [mbOK], 0);
   end;
 end;
 
 //------------------------------------------------------------------------------
 
+/// <summary>
+/// Відкриває файл за назвою, коли натиснуто вказану клавішу.
+/// </summary>
+/// <param name="Sender">Об'єкт, який спричинив подію, в нашому випадку TEdit.</param>
+/// <param name="Key">Клавіша, яка була натиснута.</param>
+/// <returns>Повертає True, якщо файл було успішно відкрито; в іншому випадку - False.</returns>
 class function TController.OpenFileByName(Sender: TObject; const Key: Char): Boolean;
 const
   ENTER_KEY_CODE = #13;
+
+var
+  TypeOpenFile: string;
 
 begin
   Result := False;
@@ -57,12 +72,23 @@ begin
       Exit;
     end;
 
-  MessageDlg('Файл DFN был выбран: ' + TEdit(Sender).Text, mtInformation, [mbOK], 0);
+  TypeOpenFile := DFN_NAME;
+
+  if Pos(TEdit(Sender).Text, '.tsv') > 0 then
+    TypeOpenFile := TSV_NAME;
+
+  MessageDlg('Файл ' + TypeOpenFile + ' был выбран: ' + TEdit(Sender).Text, mtInformation, [mbOK], 0);
   Result := True;
 end;
 
 //------------------------------------------------------------------------------
 
+/// <summary>
+/// Створює файл у форматі TSV з вмісту відкритого DFN файлу та зберігає його за заданим шляхом.
+/// </summary>
+/// <param name="OpenedDFNFilePath">Шлях до відкритого DFN файлу.</param>
+/// <param name="SavedTSVFilePath">Змінна, в яку буде збережений шлях до збереженого TSV файлу.</param>
+/// <returns>Повертає True, якщо файл успішно був створений та збережений; в іншому випадку - False.</returns>
 class function TController.CreateTSV(const OpenedDFNFilePath: string; var SavedTSVFilePath: string): Boolean;
 var
    sdSaveTSV: TSaveDialog;
@@ -76,25 +102,33 @@ begin
   end;
 
   sdSaveTSV := TSaveDialog.Create(nil);
+  sdSaveTSV.Filter := 'TSV Files|*.tsv';
   sdSaveTSV.FileName := ChangeFileExt(ExtractFileName(OpenedDFNFilePath), '.tsv'); // Отримуємо пропоноване
                                   // ім'я файлу для зберігання, через ім'я відкритого файлу з заміною формата
-  if sdSaveTSV.Execute = false then  // Перевірка чи була натиснута кнопка збереження файлу в діалоговому вікні
-    Exit;
+  if sdSaveTSV.Execute = false then  // Натискаємо та перевіряємо чи була натиснута кнопка збереження файлу
+    Exit;                                                                            // в діалоговому вікні
 
-  SavedTSVFilePath := TModel.ConvertDFNToTSV(OpenedDFNFilePath, sdSaveTSV);
+  SavedTSVFilePath := TModel.ConvertDFNToTSV(OpenedDFNFilePath, sdSaveTSV); //Створюємо форматований TSV файл
   Result := true; // Повертаємо значення, що файл був збережений
-  MessageDlg('Файл был успешно сконвертирован и сохранен в формате TSV.' + SavedTSVFilePath,
-    mtInformation, [mbOK], 0);
+  MessageDlg('Файл был успешно сконвертирован и сохранен в формате TSV.', mtInformation, [mbOK], 0);
 end;
 
 //------------------------------------------------------------------------------
 
+/// <summary>
+/// Перезаписує файл DFN з використанням даних з файлу TSV.
+/// </summary>
+/// <param name="OpenedTSVFilePath">Шлях до вибраного TSV файлу.</param>
+/// <param name="OpenedDFNToModFilePath">Шлях до вибраного DFN файлу для редагування.</param>
+/// <returns>True, якщо файл DFN був успішно перезаписаний, інакше False.</returns>
 class function TController.RewriteDFN(const OpenedTSVFilePath: string; const OpenedDFNToModFilePath: string): Boolean;
 begin
+  Result := false;
+
    if (OpenedTSVFilePath = '') and (OpenedDFNToModFilePath = '') then
   begin
-    MessageDlg('Откройте TSV и DFN файлы с совпадающими именами!', mtInformation, [mbOK], 0); // Виведення повідомленн, якщо не було
-    Exit;                                                    // відкрито обидва файла, або одного із файлів
+    MessageDlg('Откройте TSV и DFN файлы с совпадающими именами!', mtInformation, [mbOK], 0); // Виведення
+    Exit;                         // повідомленн, якщо не було відкрито обидва файла, або одного із файлів
   end;
 
   if ChangeFileExt(ExtractFileName(OpenedTSVFilePath), '') <>
@@ -105,63 +139,61 @@ begin
   end;
 
   TModel.ModifyDFN(OpenedTSVFilePath, OpenedDFNToModFilePath);
+  Result := true;
   MessageDlg('Файл DFN был перезаписан.', mtInformation, [mbOK], 0);
 end;
 
+//------------------------------------------------------------------------------
 
-class procedure TController.OpenExcel(const SavedTSVFilePath: string; const IsFileCreate: Boolean);
+/// <summary>
+/// Відкриває TSV файл у сторонній програмі або дозволяє вибрати програму для відкриття.
+/// </summary>
+/// <param name="SavedTSVFilePath">Шлях до збереженого TSV файлу.</param>
+/// <param name="IsFileCreate">Прапорець, що вказує на наявність створеного TSV файлу.</param>
+/// <param name="ProgramName">Назва програми, в якій потрібно відкрити створений TSV файл.</param>
+/// <returns>Повертає True, якщо TSV файл був успішно відкритий; в іншому випадку - False.</returns>
+class function TController.OpenByProgram(const SavedTSVFilePath: string;
+  const IsFileCreate: Boolean; const ProgramName: string): Boolean;
 var
-  ExcelPath: string;
-  odOpenExcel: TOpenDialog;
+  ExcelPath, CalcPath, ProgramPath: string;
+  odOpenProgram: TOpenDialog;
 
 begin
+  Result := false;
   ExcelPath := 'C:\Program Files\Microsoft Office\root\Office16\excel.exe'; // Стандартний шлях до Excel
-
-  if IsFileCreate = false then // Перевірка, чи був створений TSV файл
-  begin
-    MessageDlg('Сначала создайте TSV файл', mtInformation, [mbOK], 0); // Виведення повідомлення, якщо не було створено TSV файл
-    Exit;
-  end;
-
-  if FileExists(ExcelPath) then // Якщо було знайдено Excel
-  begin
-    ShellExecute(0, 'open', PChar(ExcelPath), PChar('"'+SavedTSVFilePath+'"'), nil, SW_SHOW); // Відкриття
-    Exit;
-  end;                                                              // створеного файлу в програмі Excel
-
-  ShowMessage('Excel не знайдено. Виберіть файл Excel через діалог.'); // Якщо не було знайдено Excel, дає змогу обрати самостійно програму Excel
-  odOpenExcel := TOpenDialog.Create(nil);
-
-  if odOpenExcel.Execute then //Перевірка чи була натиснута кнопка відкриття обраного файлу в діалоговому вікні
-    ShellExecute(0, 'open', PChar(odOpenExcel.FileName), PChar('"'+SavedTSVFilePath+'"'), nil, SW_SHOW);
-    // Відкриття створеного файлу в програмі Excel з урахуванням обраного шляху для програми Excel
-end;
-
-
-class procedure TController.OpenCalc(const SavedTSVFilePath: string; const IsFileCreate: Boolean);
-var
-  CalcPath: string;
-  odOpenCalc: TOpenDialog;
-
-begin
   CalcPath := 'C:\Program Files\LibreOffice\program\soffice.exe'; // Стандартний шлях до Calc
+  ProgramPath := ExcelPath; // Встановлюємо за замовчуванням стандартний шлях до програми Excel
 
-  if IsFileCreate then // // Перевірка, чи був створений TSV файл
+  if (IsFileCreate = false) or (FileExists(SavedTSVFilePath) = false) then // Перевірка, чи був створений TSV файл
+  begin                                                                                        // та чи існує файл
+    MessageDlg('Сначала создайте TSV файл', mtInformation, [mbOK], 0); // Виведення повідомлення, якщо не було
+    Exit;                                                                                 // створено TSV файл
+  end;
+
+  if Pos(ProgramName, 'Calc') > 0 then  // Якщо в переданому параметрі було вказано назву програми Calc
+    ProgramPath := CalcPath; // Тоді встановлюємо стандартний шлях до програми Calc
+
+  if FileExists(ProgramPath) then // Якщо було знайдено виконуваний файл потрібної програми
   begin
-    MessageDlg('Сначала создайте TSV файл', mtInformation, [mbOK], 0); // Виведення повідомлення, якщо не було створено TSV файл
+    ShellExecute(0, 'open', PChar(ProgramPath), PChar('"'+SavedTSVFilePath+'"'), nil, SW_SHOW); // Відкриття
+    Result := true;                                                           // створеного файлу в програмі
     Exit;
   end;
 
-  if FileExists(CalcPath) then // // Якщо було знайдено Calc
-  begin
-    ShellExecute(0, 'open', PChar(CalcPath), PChar('"'+SavedTSVFilePath+'"'), nil, SW_SHOW) // Відкриття
-  end;                                                               // створеного файлу в програмі Calc
+  MessageDlg(ProgramName + ' не найдено. Выберите файл ' + ProgramName + ' через диалоговое окно.',
+    mtInformation, [mbOK], 0);
+                                                                            // Якщо не було знайдено програму,
+  odOpenProgram := TOpenDialog.Create(nil);     // дає змогу обрати самостійно програму через діалогове вікно
+  try
+    if odOpenProgram.Execute then //Перевірка чи була натиснута кнопка відкриття обраного файлу в діалоговому вікні
+      begin
+        ShellExecute(0, 'open', PChar(odOpenProgram.FileName), PChar('"'+SavedTSVFilePath+'"'), nil, SW_SHOW);
+        Result := true;          // Відкриття створеного файлу в програмі з урахуванням обраного шляху для програми
+      end;
 
-  ShowMessage('Calc не знайдено. Виберіть файл Calc через діалог.'); // Якщо не було знайдено Calc, дає змогу обрати самостійно програму Calc
-  odOpenCalc := TOpenDialog.Create(nil);
-
-  if odOpenCalc.Execute then //Перевірка чи була натиснута кнопка відкриття обраного файлу в діалоговому вікні
-    ShellExecute(0, 'open', PChar(odOpenCalc.FileName), PChar('"'+SavedTSVFilePath+'"'), nil, SW_SHOW);
-end;   // Відкриття створеного файлу в програмі Calc з урахуванням обраного шляху для програми Calc
+  finally
+    FreeAndNil(odOpenProgram);
+  end;
+end;
 
 end.

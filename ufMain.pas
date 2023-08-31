@@ -47,12 +47,11 @@ type
     procedure FormShow(Sender: TObject);
   private
     { Private declarations }
-    OpenedDFNFilePath, OpenedTSVFilePath, OpenedDFNToModFilePath: String; // Змінні, які будуть зберігати шлях відкритих файлів
-    SavedTSVFilePath: String; // Змінна для зберігання шляху збереженого TSV файлу для можливості відкрити його в сторонніх програмах
-    IsFileCreate: boolean; // Змінна для перевірки, чи був збережений TSV файл, для відкриття його в сторонніх програмах
+    OpenedDFNFilePath, OpenedTSVFilePath, OpenedDFNToModFilePath: string; // Змінні, які будуть зберігати шлях відкритих файлів
+    SavedTSVFilePath: string; // Змінна для зберігання шляху збереженого TSV файлу для можливості відкрити його в сторонніх програмах
+    IsFileCreate: Boolean; // Змінна для перевірки, чи був збережений TSV файл, для відкриття його в сторонніх програмах
   public
     { Public declarations }
-
   end;
 
 var
@@ -64,11 +63,8 @@ implementation
 
 procedure TMainForm.bCreateTSVClick(Sender: TObject);
 begin
-  ShowMessage('1' + SavedTSVFilePath);
   IsFileCreate := TController.CreateTSV(OpenedDFNFilePath, SavedTSVFilePath); // Створюємо TSV файл за допомогою
-                                                // функції, яка повертає значення true, якщо файл був створений
-  ShowMessage('2' + SavedTSVFilePath);
- end;
+end;                                             // функції, яка повертає значення true, якщо файл був створений
 
 //------------------------------------------------------------------------------
 
@@ -81,7 +77,8 @@ end;
 
 procedure TMainForm.spChooseDFNClick(Sender: TObject);
 begin
-  if TController.ChooseFile(OpenedDFNFilePath, 'DFN Files|*.dfn') then
+  OpenedDFNFilePath := TController.ChooseFile(odOpenDFN, 'DFN Files|*.dfn');
+  if OpenedDFNFilePath <> '' then
     ePathDFN.Text := OpenedDFNFilePath;
 end;
 
@@ -97,14 +94,14 @@ end;
 
 procedure TMainForm.spChooseTSVClick(Sender: TObject);
 begin
-  if TController.ChooseFile(OpenedTSVFilePath, 'TSV Files|*.tsv') then
+  OpenedTSVFilePath := TController.ChooseFile(odOpenTSV, 'TSV Files|*.tsv');
+  if OpenedTSVFilePath <> '' then
     ePathTSV.Text := OpenedTSVFilePath;
 end;
 
 //------------------------------------------------------------------------------
 
 procedure TMainForm.ePathTSVKeyPress(Sender: TObject; var Key: Char);
-
 begin
   if TController.OpenFileByName(Sender, Key) then
     OpenedTSVFilePath := ePathTSV.Text;
@@ -114,7 +111,8 @@ end;
 
 procedure TMainForm.spChooseDFNToModClick(Sender: TObject);
 begin
-  if TController.ChooseFile(OpenedDFNToModFilePath, 'DFN Files|*.dfn') then
+  OpenedDFNToModFilePath := TController.ChooseFile(odOpenDFNToMod, 'DFN Files|*.dfn');
+  if OpenedDFNToModFilePath <> '' then
     ePathDFNToMod.Text := OpenedDFNToModFilePath;
 end;
 
@@ -130,14 +128,14 @@ end;
 
 procedure TMainForm.bOpenExcelClick(Sender: TObject);
 begin
-  TController.OpenExcel(SavedTSVFilePath, IsFileCreate);
+  TController.OpenByProgram(SavedTSVFilePath, IsFileCreate, 'Excel');
 end;
 
 //------------------------------------------------------------------------------
 
 procedure TMainForm.bOpenCalcClick(Sender: TObject);
 begin
-   TController.OpenCalc(SavedTSVFilePath, IsFileCreate);
+   TController.OpenByProgram(SavedTSVFilePath, IsFileCreate, 'Calc');
 end;
 
 //------------------------------------------------------------------------------
@@ -153,7 +151,5 @@ procedure TMainForm.FormCreate(Sender: TObject);
 begin
   IsFileCreate := false; // При створенні форми привласнюємо глобальній змінній, що відповідає за перевірку
 end;                                                            // чи був створений TSV файл, значення false
-
-//------------------------------------------------------------------------------
 
 end.
