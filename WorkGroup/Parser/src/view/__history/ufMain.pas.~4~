@@ -1,0 +1,281 @@
+unit ufMain;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes,
+  Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtDlgs,
+  Vcl.Buttons, ShellAPI, Vcl.ExtCtrls, Controller, Model;
+
+type
+  TMainForm = class(TForm)
+    ePathDFN: TEdit;
+    bCreateTSV: TButton;
+    bOpenExcel: TButton;
+    bOpenCalc: TButton;
+    odOpenDFN: TOpenDialog;
+    odOpenTSV: TOpenDialog;
+    odOpenDFNToMod: TOpenDialog;
+    spChooseDFN: TSpeedButton;
+    lChoiceDFNForConversion: TLabel;
+    sdSaveTSV: TSaveDialog;
+    odOpenExcel: TOpenDialog;
+    odOpenCalc: TOpenDialog;
+    sdSaveDFNToMod: TSaveDialog;
+    pCreateTSV: TPanel;
+    lChoiceTSVForRewriting: TLabel;
+    lChoiceDFNToMod: TLabel;
+    spChooseDFNToMod: TSpeedButton;
+    spChooseTSV: TSpeedButton;
+    bWriteDFN: TButton;
+    ePathDFNToMod: TEdit;
+    ePathTSV: TEdit;
+    pRewriteDFN: TPanel;
+    lPanelTitleCreateTSV: TLabel;
+    lPanelTitleRewriteDFN: TLabel;
+    procedure ePathDFNKeyPress(Sender: TObject; var Key: Char);
+    procedure spChooseDFNClick(Sender: TObject);
+    procedure spChooseTSVClick(Sender: TObject);
+    procedure spChooseDFNToModClick(Sender: TObject);
+    procedure bCreateTSVClick(Sender: TObject);
+    procedure bOpenExcelClick(Sender: TObject);
+    procedure bOpenCalcClick(Sender: TObject);
+    procedure ePathTSVKeyPress(Sender: TObject; var Key: Char);
+    procedure ePathDFNToModKeyPress(Sender: TObject; var Key: Char);
+    procedure bWriteDFNClick(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+    procedure FormShow(Sender: TObject);
+    procedure ApplyFilePath(const filePath : String; var GlobalFilePath : String; const fileType : String);
+    function OpenByProgram(const programName: string): Boolean;
+  private
+    { Private declarations }
+    OpenedDFNFilePath, OpenedTSVFilePath, OpenedDFNToModFilePath: string; // Змінні, які будуть зберігати шлях відкритих файлів
+    SavedTSVFilePath: string; // Змінна для зберігання шляху створеного TSV файлу для можливості відкрити його в сторонніх програмах
+    IsFileCreate: Boolean; // Змінна для перевірки, чи був збережений TSV файл, для відкриття його в сторонніх програмах
+    const ENTER_KEY_CODE = #13;
+    const STR_OPEN_FILE_INFORMATION = 'Файл "%s" был выбран';
+    const STR_DFN = 'DFN';
+    const STR_TSV = 'TSV';
+    const STR_FILE_NOT_EXIST = 'Файл не существует: ';
+    const STR_CHOOSE_DFN_FILE = 'Сначала выберите "DFN" файл';
+    const STR_TSV_EXTENSION = '.tsv';
+    const STR_SUCCESSFUL_CREATION_OF_TSV_FILE = 'Файл был успешно сконвертирован и сохранен в формате TSV';
+    const STR_DEFAULT_EXCEL_PATH = 'C:\Program Files\Microsoft Office\root\Office16\excel.exe';
+    const STR_DEFAULT_CALC_PATH = 'C:\Program Files\LibreOffice\program\soffice.exe';
+    const STR_TSV_FILE_NOT_CREATED = 'Сначала создайте TSV файл';
+    const STR_OPEN = 'open';
+    const STR_EXCEL = 'Excel';
+    const STR_CALC = 'Calc';
+    const STR_FIND_THE_APPLICATION = '%s не найдено. Выберите исполняемый файл программы %s через диалоговое окно';
+  public
+    { Public declarations }
+  end;
+
+var
+  MainForm: TMainForm;
+
+implementation
+
+{$R *.dfm}
+
+procedure TMainForm.bCreateTSVClick(Sender: TObject);
+var
+  OutputFileContent: TStringList;
+
+begin
+  if FileExists(OpenedDFNFilePath) = false then
+  begin
+    MessageDlg(STR_CHOOSE_DFN_FILE, mtInformation, [mbOK], 0);
+    Exit;
+  end;
+
+  sdSaveTSV.FileName := ChangeFileExt(ExtractFileName(OpenedDFNFilePath), STR_TSV_EXTENSION); // Отримуємо пропоноване
+                                  // ім'я файлу для зберігання, через ім'я відкритого файлу із заміною формата
+  if sdSaveTSV.Execute = false then
+    Exit;
+
+  try
+    OutputFileContent := TStringList.Create;
+    IsFileCreate := TModel.ConvertDFNToTSV(OpenedDFNFilePath, OutputFileContent); // Створюємо TSV файл
+
+    if Pos(STR_TSV_EXTENSION, sdSaveTSV.FileName) = 0 then // Перевірка, чи є в імені зберігаємого файлу
+    begin                                                                             // розширення .tsv
+      OutputFileContent.SaveToFile(sdSaveTSV.FileName + STR_TSV_EXTENSION); //Зберігання файлу з дописуванням
+      SavedTSVFilePath := sdSaveTSV.FileName + STR_TSV_EXTENSION;                          // розширення .tsv
+      Exit;
+    end;
+
+    OutputFileContent.SaveToFile(sdSaveTSV.FileName); //Зберігання файлу без дописування розширення .tsv
+    SavedTSVFilePath := sdSaveTSV.FileName;
+
+  finally
+    FreeAndNil(OutputFileContent);
+    MessageDlg(STR_SUCCESSFUL_CREATION_OF_TSV_FILE, mtInformation, [mbOK], 0);
+  end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TMainForm.bWriteDFNClick(Sender: TObject);
+begin
+  TController.RewriteDFN(OpenedTSVFilePath, OpenedDFNToModFilePath);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TMainForm.spChooseDFNClick(Sender: TObject);
+begin
+  if odOpenDFN.Execute = false then
+    Exit;
+
+  ePathDFN.Text := odOpenDFN.FileName;
+  ApplyFilePath(ePathDFN.Text, OpenedDFNFilePath, STR_DFN);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TMainForm.ePathDFNKeyPress(Sender: TObject; var Key: Char);
+begin
+  if (Key <> ENTER_KEY_CODE) then
+    Exit;
+
+  if FileExists(ePathDFN.Text) = false then
+  begin
+    MessageDlg(STR_FILE_NOT_EXIST + ePathDFN.Text, mtInformation, [mbOK], 0);
+    Exit;
+  end;
+
+  ApplyFilePath(ePathDFN.Text, OpenedDFNFilePath, STR_DFN);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TMainForm.spChooseTSVClick(Sender: TObject);
+begin
+  if odOpenTSV.Execute = false then
+    Exit;
+
+  ePathTSV.Text := odOpenTSV.FileName;
+  ApplyFilePath(ePathTSV.Text, OpenedTSVFilePath, STR_TSV);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TMainForm.ePathTSVKeyPress(Sender: TObject; var Key: Char);
+begin
+  if (Key <> ENTER_KEY_CODE) then
+    Exit;
+
+  if FileExists(ePathTSV.Text) = false then
+  begin
+    MessageDlg(STR_FILE_NOT_EXIST + ePathTSV.Text, mtInformation, [mbOK], 0);
+    Exit;
+  end;
+
+  ApplyFilePath(ePathTSV.Text, OpenedTSVFilePath, STR_TSV);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TMainForm.spChooseDFNToModClick(Sender: TObject);
+begin
+  if odOpenDFNToMod.Execute = false then
+    Exit;
+
+  ePathDFNToMod.Text := odOpenDFNToMod.FileName;
+  ApplyFilePath(ePathDFNToMod.Text, OpenedDFNToModFilePath, STR_DFN);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TMainForm.ePathDFNToModKeyPress(Sender: TObject; var Key: Char);
+begin
+  if (Key <> ENTER_KEY_CODE) then
+    Exit;
+
+  if FileExists(ePathDFNToMod.Text) = false then
+  begin
+    MessageDlg(STR_FILE_NOT_EXIST + ePathDFNToMod.Text, mtInformation, [mbOK], 0);
+    Exit;
+  end;
+
+  ApplyFilePath(ePathDFNToMod.Text, OpenedDFNToModFilePath, STR_DFN);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TMainForm.ApplyFilePath(const filePath : String; var globalFilePath : String; const fileType : String);
+begin
+   globalFilePath := filePath;
+   MessageDlg(Format(STR_OPEN_FILE_INFORMATION, [fileType]), mtInformation, [mbOK], 0);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TMainForm.bOpenExcelClick(Sender: TObject);
+begin
+  if OpenByProgram(STR_EXCEL) then
+    Exit;
+
+  // Якщо не було знайдено програму, дає змогу обрати самостійно програму через діалогове вікно
+  if odOpenExcel.Execute then
+    ShellExecute(0, STR_OPEN, PChar(odOpenExcel.FileName), PChar('"'+SavedTSVFilePath+'"'), nil, SW_SHOW);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TMainForm.bOpenCalcClick(Sender: TObject);
+begin
+  if OpenByProgram(STR_CALC) then
+    Exit;
+
+  // Якщо не було знайдено програму, дає змогу обрати самостійно програму через діалогове вікно
+  if odOpenCalc.Execute then
+    ShellExecute(0, STR_OPEN, PChar(odOpenCalc.FileName), PChar('"'+SavedTSVFilePath+'"'), nil, SW_SHOW);
+end;
+
+//------------------------------------------------------------------------------
+
+function TMainForm.OpenByProgram(const programName: string): Boolean;
+var
+  programPath: String;
+
+begin
+  Result := true; // При перевіці повернутого значення, означає, що программа має достроково завершити процедуру
+  if (IsFileCreate = false) and (FileExists(SavedTSVFilePath) = false) then // Перевірка, чи був створений TSV файл
+  begin                                                                                        // та чи існує файл
+    MessageDlg(STR_TSV_FILE_NOT_CREATED, mtInformation, [mbOK], 0); // Повідомлення, якщо не було створено TSV файл
+    Exit;
+  end;
+
+  programPath := STR_DEFAULT_EXCEL_PATH; // Встановлюємо стандартний шлях до програми Excel
+
+  if Pos(programName, STR_CALC) > 0 then  // Якщо в переданому параметрі було вказано назву програми Calc
+    programPath := STR_DEFAULT_CALC_PATH; // Тоді встановлюємо стандартний шлях до програми Calc
+
+  if FileExists(programPath) then // Якщо було знайдено виконуваний файл потрібної програми
+  begin
+    ShellExecute(0, STR_OPEN, PChar(programPath), PChar('"'+SavedTSVFilePath+'"'), nil, SW_SHOW);
+    Exit;
+  end;
+
+  Result := false; // При перевіці повернутого значення, буде означати, що программа має дати можливість обрати
+                                                                         // виконуваний файл потрібної програми
+  MessageDlg(Format(STR_FIND_THE_APPLICATION, [ProgramName, ProgramName]), mtInformation, [mbOK], 0);
+end;                                 // Повідомлення, якщо не було знайдено виконуваний файл програми
+
+//------------------------------------------------------------------------------
+
+procedure TMainForm.FormShow(Sender: TObject);
+begin
+  ePathDFN.SetFocus; // Встановлюємо курсор на перше поле вводу шляху, для швидкого доступу
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TMainForm.FormCreate(Sender: TObject);
+begin
+  IsFileCreate := false; // При створенні форми привласнюємо глобальній змінній, що відповідає за перевірку
+end;                                                            // чи був створений TSV файл, значення false
+
+end.

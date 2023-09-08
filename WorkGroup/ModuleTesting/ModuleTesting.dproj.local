@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+	<Transactions>
+    <Transaction>1899.12.30 00:00:00.000.457,=D:\Programs\Embarcadero\GitHub\Parser\Unit1.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.666,=D:\Programs\Embarcadero\GitHub\Parser\WorkGroup\Parser\src\view\ufMain.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.599,=D:\Programs\Embarcadero\Projects\Unit1.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.737,=D:\Programs\Embarcadero\GitHub\Parser\WorkGroup\Parser\src\logic\Controller.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.309,D:\Programs\Embarcadero\Projects\Tests.pas=D:\Programs\Embarcadero\Projects\Unit1.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.550,=D:\Programs\Embarcadero\GitHub\Parser\WorkGroup\Parser\src\logic\Parsing.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.052,D:\Programs\Embarcadero\GitHub\Parser\Tests.pas=D:\Programs\Embarcadero\Projects\Tests.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.263,D:\Programs\Embarcadero\GitHub\Parser\Project1.dproj=D:\Programs\Embarcadero\Projects\Project1.dproj</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.503,=D:\Programs\Embarcadero\GitHub\Parser\WorkGroup\ModuleTesting\src\Tests.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.028,D:\Programs\Embarcadero\GitHub\Parser\WorkGroup\ModuleTesting\Tests.pas=</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.416,D:\Programs\Embarcadero\GitHub\Parser\WorkGroup\ModuleTesting\ModuleTesting.dproj=D:\Programs\Embarcadero\GitHub\Parser\WorkGroup\ModuleTesting\Project1.dproj</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.631,=D:\Programs\Embarcadero\GitHub\Parser\WorkGroup\Parser\src\logic\Model.pas</Transaction>
+  </Transactions>
+</BorlandProject>

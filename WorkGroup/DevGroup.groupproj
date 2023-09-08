@@ -1,0 +1,48 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{08DA4858-85C1-4084-A7FA-C2F2AE1C024A}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="Parser\Parser.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="ModuleTesting\ModuleTesting.dproj">
+            <Dependencies/>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="Parser">
+        <MSBuild Projects="Parser\Parser.dproj"/>
+    </Target>
+    <Target Name="Parser:Clean">
+        <MSBuild Projects="Parser\Parser.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="Parser:Make">
+        <MSBuild Projects="Parser\Parser.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="ModuleTesting">
+        <MSBuild Projects="ModuleTesting\ModuleTesting.dproj"/>
+    </Target>
+    <Target Name="ModuleTesting:Clean">
+        <MSBuild Projects="ModuleTesting\ModuleTesting.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="ModuleTesting:Make">
+        <MSBuild Projects="ModuleTesting\ModuleTesting.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="Parser;ModuleTesting"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="Parser:Clean;ModuleTesting:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="Parser:Make;ModuleTesting:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>

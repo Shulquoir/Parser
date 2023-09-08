@@ -1,0 +1,203 @@
+unit Parsing;
+
+interface
+
+uses
+  SysUtils, Classes;
+
+type
+  TParsing = class
+  private
+    const EOT_KEY_CODE = #4;
+    const TAB_KEY_CODE = #9;
+    const NUM_ONE = 1;
+    const NUM_TWO = 2;
+    const STR_ID = 'ID';
+    const STR_ORIG = 'Orig';
+    const STR_CURR = 'Curr';
+    const STR_VALUES = 'Значения';
+    const STR_TRANSLATION = 'Перевод';
+    const CHAR_COLON = ':';
+    const CHAR_UPPER_A = 'А';
+    const CHAR_LOWER_A = 'а';
+    const CHAR_UPPER_YA = 'Я';
+    const CHAR_LOWER_YA = 'я';
+    const CHAR_UPPER_YO = 'Ё';
+    const CHAR_LOWER_YO = 'ё';
+  public
+    class function ConvertDFNToTSV(const OpenedDFNFilePath: String; var OutputFileContent: TStringList): Boolean;
+    class procedure ModifyDFN(const OpenedTSVFilePath: String; const OpenedDFNToModFilePath: String);
+    class function ContainsCyrillicCharacters(const input: String): Boolean;
+    class function IsCharCyrillic(c: Char): Boolean;
+    class function ExtractField(const fields: TArray<String>; const fieldName: String): String;
+  end;
+
+implementation
+
+/// <summary>
+/// Конвертує вміст файлу DFN у формат TSV та зберігає його у вказаному об'єкті TStringList.
+/// </summary>
+/// <param name="OpenedDFNFilePath">Шлях до відкритого файлу DFN.</param>
+/// <param name="OutputFileContent">Об'єкт TStringList, у якому буде збережений вміст TSV файла.</param>
+/// <returns>Повертає True, якщо конвертація пройшла успішно, або False в іншому випадку.</returns>
+class function TParsing.ConvertDFNToTSV(const OpenedDFNFilePath: String; var OutputFileContent: TStringList): Boolean;
+var
+  OriginalDFNFileContent: TStringList;
+
+begin
+  Result := false;
+
+  try
+    OriginalDFNFileContent := TStringList.Create; // Створюємо об'єкт типу TStringList
+    OriginalDFNFileContent.LoadFromFile(OpenedDFNFilePath); // Записуємо контент з файлу
+    OutputFileContent.Add(STR_ID + TAB_KEY_CODE + STR_VALUES + TAB_KEY_CODE + STR_TRANSLATION); // Додаємо перший рядок в майбутній файл TSV
+
+    for var i := 0 to OriginalDFNFileContent.Count - NUM_ONE do // Перебираємо рядки в файлі
+    begin
+      var line := OriginalDFNFileContent[i]; // Оголошуємо змінну яка буде містити наш радок
+
+      if ContainsCyrillicCharacters(line) and  // Перевіряємо за допомогою створеної функції на наявність кирилиці
+      (Pos(STR_ID, line) > 0) and (Pos(STR_ORIG, line) > 0) and (Pos(STR_CURR, line) > 0) then // Також
+      begin     // відбувається перевірка на наявість в рядку одразу трьох полів 'ID', 'Orig', 'Curr'
+        var fields := line.Split([EOT_KEY_CODE]); // Розділяємо рядок на поля, який розділений символом EOT
+          var id := ExtractField(fields, STR_ID); // За допомогою створеної функції, в яку передаємо поле та
+          var orig := ExtractField(fields, STR_ORIG); // ідентифікатор 'ID'/'Orig'/'Curr', отримуємо зміст
+          var curr := ExtractField(fields, STR_CURR); // відповідного поля без одинарних лапок, якщо такі присутні
+        OutputFileContent.Add(id + TAB_KEY_CODE + orig + TAB_KEY_CODE + curr);
+      end;
+    end;
+
+    Result := true;
+
+  finally
+    FreeAndNil(OriginalDFNFileContent); // Звільняємо зміст копії відкритого файлу
+  end;
+end;
+
+//------------------------------------------------------------------------------
+
+/// <summary>
+/// Модифікує вміст DFN файлу на основі відкритого TSV файлу та зберігає зміни у відкритому DFN файлі.
+/// </summary>
+/// <param name="OpenedTSVFilePath">Шлях до відкритого TSV файлу.</param>
+/// <param name="OpenedDFNToModFilePath">Шлях до відкритого DFN файлу для модифікації.</param>
+class procedure TParsing.ModifyDFN(const OpenedTSVFilePath: String; const OpenedDFNToModFilePath: String);
+var
+  OriginalTSVFileContent, OriginalDFNToModFileContent: TStringList;
+  tsvIDField, dfnIDField: String;
+
+begin
+  try
+    OriginalTSVFileContent := TStringList.Create;
+    OriginalDFNToModFileContent := TStringList.Create;
+
+    OriginalTSVFileContent.LoadFromFile(OpenedTSVFilePath); // Записуємо контент з файлу
+    OriginalDFNToModFileContent.LoadFromFile(OpenedDFNToModFilePath); // Записуємо контент з файлу
+
+    for var TSVLine := 0 to OriginalTSVFileContent.Count - NUM_ONE do // Перебираємо рядки в файлі TSV
+    begin
+      tsvIDField := OriginalTSVFileContent[TSVLine].Split([TAB_KEY_CODE])[0]; // Передаємо в змінну перше поле з
+                                                                                              // рядка TSV файла
+      for var DFNLine := 0 to OriginalDFNToModFileContent.Count - NUM_ONE do // Перебираємо рядки в файлі DFN
+      begin
+        dfnIDField := ExtractField(OriginalDFNToModFileContent[DFNLine].Split([EOT_KEY_CODE]), STR_ID); //Записуємо
+                                                                                             // поле "ID" DFN файла
+        if Pos(tsvIDField, dfnIDField) = NUM_ONE then // Перевірка, чи поле ID в DFN файлі ідентичне першому полю TSV файла
+        begin // Якщо було знайдено співпадіння, то шукаємо поле "Curr" в рядку DFN файлу
+          var OriginalDFNLine := OriginalDFNToModFileContent[DFNLine]; // Копіюємо рядок DFN файлу зі співпадінням
+          var DFNFields := OriginalDFNToModFileContent[DFNLine].Split([EOT_KEY_CODE]); // Набір полів рядка з
+                                                                                       // ідентичним полем ID
+          for var CurrField := 0 to Length(DFNFields) - NUM_ONE do // Перебираємо поля рядка в якому було знайдено
+          begin      // співпадіння поля "ID" для знаходження номера поля в якому присутня назва поля "Curr",
+                                            // використаємо потім цей номер для перезапису відповідного поля
+            if Pos(STR_CURR, DFNFields[CurrField]) >= NUM_ONE then // Безпосередня перевірка поля на вміст 'Curr:'
+            begin
+              var DFNCurr := OriginalDFNToModFileContent[DFNLine].Split([EOT_KEY_CODE])[CurrField]; // Записуємо поле Curr DFN файлу
+              var TSVCurr := OriginalTSVFileContent[TSVLine].Split([TAB_KEY_CODE])[NUM_TWO]; // Записуємо поле Curr TSV файлу
+              OriginalDFNLine := OriginalDFNLine.Replace(DFNCurr, STR_CURR + CHAR_COLON + QuotedStr(TSVCurr)); // В рядку з ідентичним
+              // полем "ID" замінюємо зміст поля "Curr", порядковий номер якого дорівнює CurrField, на 3 поле з файлу TSV
+              OriginalDFNToModFileContent[DFNLine] := OriginalDFNLine; // Заміна оригінального рядка форматованою копією рядка
+              Break; // Вийти з циклу, якщо знайдено відповідне поле
+            end;
+          end;
+
+          Break; // Вийти з циклу, якщо знайдено ідентичне поле ID, переходимо до наступного рядка в файлі TSV
+
+        end;
+      end;
+    end;
+
+    OriginalDFNToModFileContent.SaveToFile(OpenedDFNToModFilePath); // Зберігаємо зміни у файлі DFN
+
+  finally
+    FreeAndNil(OriginalTSVFileContent);
+    FreeAndNil(OriginalDFNToModFileContent);
+  end;
+end;
+
+//------------------------------------------------------------------------------
+
+/// <summary>
+/// Перевіряє, чи містить рядок кириличні символи.
+/// </summary>
+/// <param name="input">Рядок для перевірки.</param>
+/// <returns>True, якщо рядок містить кириличні символи, інакше - False.</returns>
+class function TParsing.ContainsCyrillicCharacters(const input: String): Boolean;
+begin
+  Result := False; // Записуємо в результат фунцкції false, якщо не буде знайдено кирилицю
+  for var i := NUM_ONE to Length(input) do // Перебираємо літери в переданому рядку
+  begin
+    if IsCharCyrillic(input[i]) then // Використовуємо ще одну функцію для перевірки чи є літера кирилицею
+    begin
+      Result := True; // Якщо було знайдено відповідність символу кирилиці, зазначеному в фунцкціїї IsCharCyrillic
+      Exit; // Завершуємо виконання функції з результатом true
+    end;
+  end;
+end;
+
+//------------------------------------------------------------------------------
+
+/// <summary>
+/// Перевіряє, чи є символ кириличним.
+/// </summary>
+/// <param name="c">Символ для перевірки.</param>
+/// <returns>True, якщо символ є кириличним, інакше - False.</returns>
+class function TParsing.IsCharCyrillic(c: Char): Boolean;
+begin
+  Result := (c >= CHAR_UPPER_A) and (c <= CHAR_UPPER_YA) or (c >= CHAR_LOWER_A) and
+    (c <= CHAR_LOWER_YA) or (c = CHAR_UPPER_YO) or (c = CHAR_LOWER_YO) or
+    (c = 'І') or (c = 'і') or (c = 'Ї') or (c = 'ї');
+end;
+
+//------------------------------------------------------------------------------
+
+/// <summary>
+/// Знаходить зміст поля за його назвою.
+/// </summary>
+/// <param name="fields">Масив полів, серед яких здійснюється пошук.</param>
+/// <param name="fieldName">Назва поля, яке необхідно знайти.</param>
+/// <returns>Зміст поля, якщо знайдено, або порожній рядок, якщо не знайдено.</returns>
+class function TParsing.ExtractField(const fields: TArray<String>; const fieldName: String): String;
+var
+  fieldValue: String;
+
+begin
+  for var field in fields do // Перебираємо поля в рядку
+  begin
+    if Pos(fieldName, field) > 0 then // Перевірка, чи міститься в полі задана назва поля
+    begin
+      fieldValue := (Copy(field, Pos(fieldName, field) + Length(fieldName) + NUM_ONE, MaxInt));  // Якщо знайдено,
+                              // то повертає зміст поля - без імені поля, символу ':' та весь зміст до кінця поля
+      if (Length(fieldValue) >= NUM_TWO) and (fieldValue[NUM_ONE] = '''') and  // Перевірка чи містить зміст поля
+      (fieldValue[Length(fieldValue)] = '''') then                        // в кінці та на початку одинарні лапки
+        Result := Copy(fieldValue, NUM_TWO, Length(fieldValue) - NUM_TWO) // Якщо містить, то прибирає
+      else
+        Result := fieldValue; // Якщо ні, то нічого не змінюється
+      Break; // Виходимо з циклу при знаходженні відповідної назви поля
+    end
+    else
+      Result := ''; // Якщо не було знайдено ім'я поля
+  end;
+end;
+
+end.
