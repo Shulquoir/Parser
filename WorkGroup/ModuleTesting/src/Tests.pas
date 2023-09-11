@@ -3,7 +3,7 @@ unit Tests;
 interface
 
 uses
-  DUnitX.TestFramework, Classes, SysUtils, Parsing;
+  DUnitX.TestFramework, Classes, Dialogs;
 
 type
   [TestFixture]
@@ -13,8 +13,10 @@ type
     procedure Setup;
     [TearDown]
     procedure TearDown;
-    //[Test]
-    //procedure TestConvertDFNToTSV;
+    [Test]
+    procedure TestConvertDFNToTSV;
+    [Test]
+    procedure TestRewriteDFN;
     [Test]
     procedure TestContainsCyrillicCharacters_True;
     [Test]
@@ -33,6 +35,9 @@ type
 
 implementation
 
+uses
+  SysUtils, Parsing;
+
 procedure TParserTests.Setup;
 begin
 end;
@@ -41,40 +46,110 @@ procedure TParserTests.TearDown;
 begin
 end;
 
-{procedure TParserTests.TestConvertDFNToTSV;
-  var
-  OpenedDFNFilePath, OutputFilePath, ProjectPath: string;
-  OutputFileContent, ExpectedOutput: TStringList;
+//------------------------------------------------------------------------------
+//    Тестування функції створення TSV файлу на основі відкритого DFN файлу
+//------------------------------------------------------------------------------
+procedure TParserTests.TestConvertDFNToTSV;
+var
+  ProjectPath, OpenedDFNFilePath: String;
+  TestDFNFileContent, OutputFileContent: TStringList;
   FileCreate: TFileStream;
 
 begin
-  ProjectPath := GetCurrentDir; // Отримуємо шлях до папки з exe файлом проекту, тобто Parser\
+  // Проводимо налаштування перед тестом
+  ProjectPath := GetCurrentDir; // Отримуємо шлях до папки з exe файлом проекту, тобто Parser\WorkGroup\bin
+  OpenedDFNFilePath := IncludeTrailingPathDelimiter(ProjectPath) + 'TestUnit.dfn'; // Шлях до файлу, що буде створений
 
-  // Встановлюємо потрібні дані та налаштування перед тестом
-  OpenedDFNFilePath := 'D:\Programs\Embarcadero\ТЗ\UnitTest.dfn';
-  FForm.OriginalDFNFileContent := TStringList.Create;
-  FForm.OriginalDFNFileContent.Add('ID:000' + #4 + 'Orig:111' + #4 + 'Curr:222');
-  FForm.OriginalDFNFileContent.Add('ID:1' + #4 + 'Orig:Hello' + #4 + 'Curr:Привіт');
+  try
+    FileCreate := TFileStream.Create(OpenedDFNFilePath, fmCreate); // Створюємо файл в кореневій папці проекту bin
+  finally                                                                                 // з іменем TestUnit.dfn
+    FreeAndNil(FileCreate);
+  end;
 
-  // Викликаємо процедуру, яку хочемо протестувати
-  FForm.bCreateTSVClick(nil);
+  // Встановлюємо тестові значення та записуємо в створений DFN файл
+  TestDFNFileContent := TStringList.Create;
+  TestDFNFileContent.Add('ID:000' + #4 + 'Orig:111' + #4 + 'Curr:222');
+  TestDFNFileContent.Add('ID:1:50' + #4 + 'Orig:line' + #4 + 'Curr:');
+  TestDFNFileContent.Add('ID:1' + #4 + 'Orig:Hello' + #4 + 'Curr:Привіт');
+  TestDFNFileContent.SaveToFile(OpenedDFNFilePath);
 
-  // Очікувані результати
-  OutputFilePath := 'D:\Programs\Embarcadero\ТЗ\Unit1.tsv';
-  ExpectedOutput := TStringList.Create;
+  //Створюємо TStringList з очікуваним результатом Викликаємо процедуру, яку хочемо протестувати
+  OutputFileContent := TStringList.Create;
+  TParsing.ConvertDFNToTSV(OpenedDFNFilePath, OutputFileContent);
+
+  // Створюємо TStringList з очікуваним результатом
+  var ExpectedOutput := TStringList.Create;
   ExpectedOutput.Add('ID' + #9 + 'Значения' + #9 + 'Перевод');
   ExpectedOutput.Add('1' + #9 + 'Hello' + #9 + 'Привіт');
 
-  // Завантажуємо створений файл та порівнюємо з очікуваним результатом
-  var ActualOutput := TStringList.Create;
-  ActualOutput.LoadFromFile(FForm.sdSaveTSV.FileName);
-  Assert.AreEqual(ExpectedOutput.Text, ActualOutput.Text);
+  // Порівнюємо результат з очікуваним результатом
+  Assert.AreEqual(ExpectedOutput.Text, OutputFileContent.Text);
 
   // Прибираємо за собою
-  ActualOutput.Free;
-  ExpectedOutput.Free;
-  DeleteFile(FForm.sdSaveTSV.FileName);
-end;}
+  FreeAndNil(ExpectedOutput);
+  FreeAndNil(TestDFNFileContent);
+  FreeAndNil(OutputFileContent);
+  DeleteFile(OpenedDFNFilePath);
+end;
+
+//------------------------------------------------------------------------------
+//            Тестування функції перезапису відкритого DFN файлу
+//------------------------------------------------------------------------------
+procedure TParserTests.TestRewriteDFN;
+var
+  ProjectPath, OpenedTSVFilePath, OpenedDFNToModFilePath: String;
+  TestTSVFileContent, TestDFNToModFileContent: TStringList;
+  TSVFileCreate, DFNFileCreate, DifTSVFileCreate : TFileStream;
+
+begin
+  // Проводимо налаштування перед тестом
+  ProjectPath := GetCurrentDir; // Отримуємо шлях до папки з exe файлом проекту, тобто Parser\WorkGroup\bin
+  OpenedTSVFilePath := IncludeTrailingPathDelimiter(ProjectPath) + 'TestUnit1.tsv'; // Шлях до файлу TSV, що буде створений
+  OpenedDFNToMoDFilePath := IncludeTrailingPathDelimiter(ProjectPath) + 'TestUnit1.dfn'; // Шлях до файлу DFN, що буде створений
+
+  try
+    TSVFileCreate := TFileStream.Create(OpenedTSVFilePath, fmCreate); // Створюємо файл TestUnit1.tsv в папці bin
+    DFNFileCreate := TFileStream.Create(OpenedDFNToModFilePath, fmCreate); // Створюємо файл TestUnit1.dfn в папці bin
+  finally
+    FreeAndNil(TSVFileCreate);
+    FreeAndNil(DFNFileCreate);
+  end;
+
+  // Встановлюємо тестові значення та записуємо в створений TSV файл
+  TestTSVFileContent := TStringList.Create;
+  TestTSVFileContent.Add('456' + #9 + 'Значения' + #9 + 'Перевод');
+  TestTSVFileContent.Add('001' + #9 + 'Строка' + #9 + 'Рядок');
+  TestTSVFileContent.SaveToFile(OpenedTSVFilePath);
+
+  // Встановлюємо тестові значення та записуємо в створений DFN файл
+  TestDFNToModFileContent := TStringList.Create;
+  TestDFNToModFileContent.Add('ID:456' + #4 + 'Orig:''Значения''' + #4 + 'Curr:''Значения''');
+  TestDFNToModFileContent.Add('ID:001' + #4 + 'Orig:' + #4 + 'Curr:');
+  TestDFNToModFileContent.Add('ID:1' + #4 + 'Orig:''Hello''' + #4 + 'Curr:''Hello''');
+  TestDFNToModFileContent.SaveToFile(OpenedDFNToMoDFilePath);
+
+  // Викликаємо процедуру, яку хочемо протестувати
+  TParsing.ModifyDFN(OpenedTSVFilePath, OpenedDFNToMoDFilePath);
+
+  // Очікувані результати
+  var ExpectedDFNContent := TStringList.Create;
+  ExpectedDFNContent.Add('ID:456' + #4 + 'Orig:''Значения''' + #4 + 'Curr:''Перевод''');
+  ExpectedDFNContent.Add('ID:001' + #4 + 'Orig:' + #4 + 'Curr:''Рядок''');
+  ExpectedDFNContent.Add('ID:1' + #4 + 'Orig:''Hello''' + #4 + 'Curr:''Hello''');
+
+  // Завантажуємо створений файл та порівнюємо з очікуваним результатом
+  var ActualDFNContent := TStringList.Create;
+  ActualDFNContent.LoadFromFile(OpenedDFNToModFilePath);
+  Assert.AreEqual(ExpectedDFNContent.Text, ActualDFNContent.Text);
+
+  // Прибираємо за собою
+  FreeAndNil(ExpectedDFNContent);
+  FreeAndNil(ActualDFNContent);
+  FreeAndNil(TestTSVFileContent);
+  FreeAndNil(TestDFNToModFileContent);
+  DeleteFile(OpenedTSVFilePath);
+  DeleteFile(OpenedDFNToModFilePath);
+end;
 
 //------------------------------------------------------------------------------
 //      Тестування функцій для обробки рядків, полів та символів файлу

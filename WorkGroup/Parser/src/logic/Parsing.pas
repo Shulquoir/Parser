@@ -3,7 +3,7 @@ unit Parsing;
 interface
 
 uses
-  SysUtils, Classes;
+  SysUtils,  Classes;
 
 type
   TParsing = class
